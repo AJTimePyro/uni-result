@@ -59,7 +59,6 @@ class IPU_Result_Parser:
         It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year. If page is supposed to be skipped, then it return False else True
         """
 
-        # print(raw_exam_meta_data, end='\n\n')
         regexStrForExamMetaData = r'Programme Code:\s(\d{3})\s+Programme Name:\s+(.+)\s+SchemeID:\s\d+\s+Sem./Year:\s(\d{2})\s+SEMESTER\s+Institution Code:\s+(\d{3})\s+Institution:\s+(.+)\n'
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
 
@@ -72,7 +71,6 @@ class IPU_Result_Parser:
         if batch == 0:
             return False
 
-        # print(college_name, degree_name, semester_num, batch)
         return True
     
     def __get_int_val(self, val: str) -> int:
@@ -106,7 +104,6 @@ class IPU_Result_Parser:
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
 
-        # print(raw_subject_data, end='\n\n')
         regexStrForSubjectData = r'(\d{6})\s+(\w+\s*-?\d{3})\s+(.+)\s+(\d{1,2})\s+(PRACTICAL|THEORY).+(\d{2,3}|--)\s+(\d{2,3})\s+\d{2,3}\s+(\d{2,3})'
         subject_detail = re.search(regexStrForSubjectData, raw_subject_data)
 
@@ -116,10 +113,6 @@ class IPU_Result_Parser:
         subject_credit = self.__get_int_val(subject_detail.group(4))
         subject_type = subject_detail.group(5)
         
-        # if subject_detail.group(6) == '--':
-        #     subject_internal_marks = 0
-        # else:
-        #     subject_internal_marks = self.__get_int_val(subject_detail.group(6))
         subject_internal_marks = self.__get_int_val(subject_detail.group(6))
         subject_external_marks = self.__get_int_val(subject_detail.group(7))
         subject_passing_marks = self.__get_int_val(subject_detail.group(8))
@@ -207,12 +200,20 @@ class IPU_Result_Parser:
         student_name = student_detail_regex_search.group(2).strip()
 
     def __extract_student_marks(self, raw_student_marks: str):
+        """
+        It will divide student marks into individual subject marks and then parse each subject marks
+        """
+
         student_mark_list = self.__get_student_marks_list(raw_student_marks)
 
         for student_mark in student_mark_list:
             self.__extract_student_score(student_mark)
     
     def __get_student_marks_list(self, raw_student_marks: str) -> list[str]:
+        """
+        It will divide student marks into individual subject marks list
+        """
+
         student_mark_list = []
         end_index = 0
         subject_ids_iter = re.finditer(r'\d{6}', raw_student_marks)
@@ -227,6 +228,10 @@ class IPU_Result_Parser:
         return student_mark_list
     
     def __extract_student_score(self, raw_student_score: str):
+        """
+        It will parse student marks like subject id, subject credit, internal marks, external marks, total marks and grade
+        """
+
         student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABFO]\+?)\))?', raw_student_score)
 
         subject_id = student_score_regex_match.group(1)
