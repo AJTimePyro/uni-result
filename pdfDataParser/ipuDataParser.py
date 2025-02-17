@@ -2,16 +2,30 @@ from pypdf import PageObject
 import re
 import pdfParser
 import time
+import uuid
+import os
+import pandas as pd
+
+DEFAULT_STUDENT_RESULT = {
+    'roll_num': '',
+    'name': ''
+}
 
 class IPU_Result_Parser:
     __pdf_pages_list: list[PageObject]
     __pdf_page_index: int
+    __students_result_list: list[dict[str, str | list[int]]]
+    __students_result_index: int
 
     def __init__(self, pdf_pages_list: list[PageObject] = []):
         if not pdf_pages_list:
             raise ValueError("Page List can't be empty.")
+        
+        # Initializing values
         self.__pdf_pages_list = pdf_pages_list
         self.__pdf_page_index = -1
+        self.__students_result_list = list()
+        self.__students_result_index = -1
     
     def start(self):
         self.__parsing_pdf_pages()
@@ -33,9 +47,23 @@ class IPU_Result_Parser:
                 break
 
             if self.__is_page_contains_subject_list(next_page):
+                self.__storing_result()
+
+                # Clearing previous results
+                self.__students_result_list.clear()
+                self.__students_result_index = -1
+
                 self.__start_subjects_parser(next_page)
             else:
                 self.__start_student_results_parser(next_page)
+    
+    def __storing_result(self):
+        student_result_df = pd.DataFrame(self.__students_result_list)
+
+        # file_name = f"{uuid.uuid4()}.csv"
+        # file_path = os.path.join("dev", "test_result", file_name)
+        # student_result_df.to_csv(file_path, index=False)
+        del student_result_df
     
     def __get_next_page(self) -> str | None:
         """
@@ -154,6 +182,8 @@ class IPU_Result_Parser:
         students_raw_result_list = self.__get_students_raw_result_list(raw_result)
 
         for student_raw_result in students_raw_result_list:
+            self.__students_result_list.append(DEFAULT_STUDENT_RESULT.copy())
+            self.__students_result_index += 1
             self.__extract_student_result(student_raw_result)
     
     def __get_students_raw_result_list(self, raw_result: str) -> list[str]:
@@ -199,6 +229,10 @@ class IPU_Result_Parser:
         student_roll_num = student_detail_regex_search.group(1).strip()
         student_name = student_detail_regex_search.group(2).strip()
 
+        # Adding student detail to list
+        self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
+        self.__students_result_list[self.__students_result_index]['name'] = student_name
+
     def __extract_student_marks(self, raw_student_marks: str):
         """
         It will divide student marks into individual subject marks and then parse each subject marks
@@ -240,6 +274,9 @@ class IPU_Result_Parser:
         external_marks = self.__get_int_val(student_score_regex_match.group(4))
         total_marks = self.__get_int_val(student_score_regex_match.group(5))
         grade = student_score_regex_match.group(6)
+
+        # Adding student marks to list
+        self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks]
 
 # if __name__ == "__main__":
 #     t1 = time.time()
