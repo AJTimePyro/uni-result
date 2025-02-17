@@ -35,7 +35,7 @@ class IPU_Result_Parser:
             if self.__is_page_contains_subject_list(next_page):
                 self.__start_subjects_parser(next_page)
             else:
-                self.__start_student_results_parser()
+                self.__start_student_results_parser(next_page)
     
     def __get_next_page(self) -> str | None:
         """
@@ -72,7 +72,7 @@ class IPU_Result_Parser:
         if batch == 0:
             return False
 
-        print(college_name, degree_name, semester_num, batch)
+        # print(college_name, degree_name, semester_num, batch)
         return True
     
     def __get_int_val(self, val: str) -> int:
@@ -83,7 +83,7 @@ class IPU_Result_Parser:
         if val.isdigit():
             return int(val.strip())
         else:
-            raise ValueError("Value is not integer.")
+            return 0
     
     def __peek_to_get_batch(self) -> int:
         """
@@ -116,10 +116,11 @@ class IPU_Result_Parser:
         subject_credit = self.__get_int_val(subject_detail.group(4))
         subject_type = subject_detail.group(5)
         
-        if subject_detail.group(6) == '--':
-            subject_internal_marks = 0
-        else:
-            subject_internal_marks = self.__get_int_val(subject_detail.group(6))
+        # if subject_detail.group(6) == '--':
+        #     subject_internal_marks = 0
+        # else:
+        #     subject_internal_marks = self.__get_int_val(subject_detail.group(6))
+        subject_internal_marks = self.__get_int_val(subject_detail.group(6))
         subject_external_marks = self.__get_int_val(subject_detail.group(7))
         subject_passing_marks = self.__get_int_val(subject_detail.group(8))
     
@@ -148,12 +149,96 @@ class IPU_Result_Parser:
             return
         self.__subjects_data_parser(subjects_raw_details)
     
-    def __start_student_results_parser(self):
-        pass
+    def __start_student_results_parser(self, page_data: str):
+        """
+        This will remove header from page data and then starts parsing
+        """
 
+        # Getting index from where result actually starts
+        result_start_index = re.search(r'RTSID:\s+\d+\s*\n', page_data).end()
+
+        raw_result = page_data[result_start_index:].strip()
+        students_raw_result_list = self.__get_students_raw_result_list(raw_result)
+
+        for student_raw_result in students_raw_result_list:
+            self.__extract_student_result(student_raw_result)
+    
+    def __get_students_raw_result_list(self, raw_result: str) -> list[str]:
+        """
+        It will divide raw result into individual student result list
+        """
+
+        result_list = []
+        start_index = 0
+        roll_nums_iter = re.finditer(r'\b\d{11}\b', raw_result)
+
+        for roll_num_iter in roll_nums_iter:
+            end_index = roll_num_iter.start()
+            if end_index == 0:
+                continue
+            result_list.append(raw_result[start_index: end_index])
+            start_index = end_index
+        result_list.append(raw_result[start_index: ])
+        return result_list
+    
+    def __extract_student_result(self, raw_student_data: str):
+        """
+        It will divide student result into student detail and student marks, and then parse them individually
+        """
+
+        # Getting index of where result actually starts
+        result_start_index = re.search(r'SchemeID:\s+\d{12}\s+', raw_student_data).end()
+
+        student_detail = raw_student_data[:result_start_index].strip()
+        student_marks = raw_student_data[result_start_index:].strip()
+
+        self.__extract_student_detail(student_detail)
+        self.__extract_student_marks(student_marks)
+    
+    def __extract_student_detail(self, raw_student_detail: str):
+        """
+        It will parse student detail like student roll number and student name
+        """
+
+        student_detail_regex_pattern = r'(\d{11})\s+(.+?)\s+SID:'
+        student_detail_regex_search = re.search(student_detail_regex_pattern, raw_student_detail)
+
+        student_roll_num = student_detail_regex_search.group(1).strip()
+        student_name = student_detail_regex_search.group(2).strip()
+
+    def __extract_student_marks(self, raw_student_marks: str):
+        student_mark_list = self.__get_student_marks_list(raw_student_marks)
+
+        for student_mark in student_mark_list:
+            self.__extract_student_score(student_mark)
+    
+    def __get_student_marks_list(self, raw_student_marks: str) -> list[str]:
+        student_mark_list = []
+        end_index = 0
+        subject_ids_iter = re.finditer(r'\d{6}', raw_student_marks)
+
+        for subject_id_iter in subject_ids_iter:
+            start_index = end_index
+            end_index = subject_id_iter.start()
+            if end_index == 0:
+                continue
+            student_mark_list.append(raw_student_marks[start_index: end_index].strip())
+        student_mark_list.append(raw_student_marks[start_index: ].strip())
+        return student_mark_list
+    
+    def __extract_student_score(self, raw_student_score: str):
+        student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABFO]\+?)\))?', raw_student_score)
+
+        subject_id = student_score_regex_match.group(1)
+        subject_credit = self.__get_int_val(student_score_regex_match.group(2))
+        internal_marks = self.__get_int_val(student_score_regex_match.group(3))
+        external_marks = self.__get_int_val(student_score_regex_match.group(4))
+        total_marks = self.__get_int_val(student_score_regex_match.group(5))
+        grade = student_score_regex_match.group(6)
 
 # if __name__ == "__main__":
 #     t1 = time.time()
+#     # obj = pdfParser.PDFParser('')
 #     obj = pdfParser.PDFParser('')
 #     obj.parsePdf()
 #     parser = IPU_Result_Parser(obj.pdf_pages_list)
