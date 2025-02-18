@@ -2,5 +2,8 @@
 venv
 dev
 
+# ENV
+.env
+
 # Cache
 __pycache__
