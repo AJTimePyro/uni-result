@@ -1,4 +1,5 @@
 from pypdf import PageObject
+from lib.result_db import Result_DB
 import re
 import pdfParser
 import time
@@ -11,11 +12,14 @@ DEFAULT_STUDENT_RESULT = {
     'name': ''
 }
 
+UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
+
 class IPU_Result_Parser:
     __pdf_pages_list: list[PageObject]
     __pdf_page_index: int
     __students_result_list: list[dict[str, str | list[int]]]
     __students_result_index: int
+    __res_db: Result_DB
 
     def __init__(self, pdf_pages_list: list[PageObject] = []):
         if not pdf_pages_list:
@@ -26,6 +30,7 @@ class IPU_Result_Parser:
         self.__pdf_page_index = -1
         self.__students_result_list = list()
         self.__students_result_index = -1
+        self.__res_db = Result_DB(UNIVERSITY_NAME)
     
     def start(self):
         self.__parsing_pdf_pages()
