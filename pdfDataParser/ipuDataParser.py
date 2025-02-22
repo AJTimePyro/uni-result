@@ -1,5 +1,6 @@
 from pypdf import PageObject
 from lib.result_db import Result_DB
+from typing import Union
 import re
 import pdfParser
 import time
@@ -87,24 +88,33 @@ class IPU_Result_Parser:
 
         return not page_content.startswith("RESULT TABULATION SHEET")
 
-    def __exam_meta_data_parser(self, raw_exam_meta_data: str) -> bool:
+    def __exam_meta_data_parser(self, raw_exam_meta_data: str) -> Union[dict[str, int | str], None]:
         """
-        It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year. If page is supposed to be skipped, then it return False else True
+        It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year; and return in dictionary. If page is supposed to be skipped, then it return False else True
         """
 
         regexStrForExamMetaData = r'Programme Code:\s(\d{3})\s+Programme Name:\s+(.+)\s+SchemeID:\s\d+\s+Sem./Year:\s(\d{2})\s+SEMESTER\s+Institution Code:\s+(\d{3})\s+Institution:\s+(.+)\n'
+
+        batch = self.__peek_to_get_batch()
+        if batch == 0:
+            return None
+        
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
 
-        degree_code = self.__get_int_val(exam_meta_data_matched_regex.group(1))
+        degree_code = exam_meta_data_matched_regex.group(1)
         degree_name = exam_meta_data_matched_regex.group(2).strip()
         semester_num = self.__get_int_val(exam_meta_data_matched_regex.group(3))
         college_code = self.__get_int_val(exam_meta_data_matched_regex.group(4))
         college_name = exam_meta_data_matched_regex.group(5).strip()
-        batch = self.__peek_to_get_batch()
-        if batch == 0:
-            return False
-
-        return True
+        
+        return {
+            'degree_code': degree_code,
+            'degree_name': degree_name,
+            'semester_num': semester_num,
+            'batch': batch,
+            'college_code': college_code,
+            'college_name': college_name
+        }
     
     def __get_int_val(self, val: str) -> int:
         """
@@ -149,14 +159,20 @@ class IPU_Result_Parser:
         subject_internal_marks = self.__get_int_val(subject_detail.group(6))
         subject_external_marks = self.__get_int_val(subject_detail.group(7))
         subject_passing_marks = self.__get_int_val(subject_detail.group(8))
+
+        return self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
     
     def __subjects_data_parser(self, raw_subjects_data: str):
         """
         It will divide subjects data into individual subject and then parse each subject
         """
 
+        subject_id_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
-            self.__subject_parser(raw_subject_data)
+            subject_id = self.__subject_parser(raw_subject_data)
+            if subject_id:
+                subject_id_list.append(subject_id)
+        return subject_id_list
     
     def __start_subjects_parser(self, page_data: str):
         """
@@ -171,9 +187,26 @@ class IPU_Result_Parser:
         subjects_raw_details = page_data[subjects_start_index:].strip()
 
         # Parsing exam meta data as well as subjects data
-        if not self.__exam_meta_data_parser(exam_meta_data):
+        meta_data = self.__exam_meta_data_parser(exam_meta_data)
+        if meta_data is None:
             return
-        self.__subjects_data_parser(subjects_raw_details)
+        
+        subject_id_list = self.__subjects_data_parser(subjects_raw_details)
+        self.__res_db.link_subjects_to_required_degree(
+            subject_ids = subject_id_list,
+            degree_id = meta_data['degree_code'],
+            degree_name = meta_data['degree_name'],
+            batch = meta_data['batch']
+        )
+
+        # {
+        #     'degree_code': degree_code,
+        #     'degree_name': degree_name,
+        #     'semester_num': semester_num,
+        #     'batch': batch,
+        #     'college_code': college_code,
+        #     'college_name': college_name
+        # }
     
     def __start_student_results_parser(self, page_data: str):
         """
