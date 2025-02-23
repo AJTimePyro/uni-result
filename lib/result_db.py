@@ -26,6 +26,7 @@ class Result_DB:
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
+    __college_along_shift_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
 
     def __init__(self, university_name: str = ''):
@@ -35,6 +36,7 @@ class Result_DB:
         self.__uni_collec = self.__db["universities"]
         self.__batch_collec = self.__db["batches"]
         self.__degree_collec = self.__db["degrees"]
+        self.__college_along_shift_collec = self.__db["colleges"]
         self.__subject_collec = self.__db["subjects"]
 
         if university_name:
@@ -112,7 +114,7 @@ class Result_DB:
             "subjects": dict()
         })
 
-        updated_batch_doc = self.__batch_collec.find_one_and_update({
+        self.__batch_collec.update_one({
             "_id": batch_doc_id
         }, {
             "$push": {
@@ -120,10 +122,47 @@ class Result_DB:
                     degree_id: new_degree.inserted_id
                 }
             }
-        }, return_document = pymongo.ReturnDocument.AFTER)
-        if updated_batch_doc:
-            batch_doc = updated_batch_doc
-            return new_degree.inserted_id
+        })
+        return new_degree.inserted_id
+
+    def __create_new_college(
+        self,
+        degree_doc_id: str,
+        college_id: str,
+        college_name: str
+    ):
+        """
+        It will create new college if not already exist and also link with respective degree
+        """
+
+        degree_doc = self.__degree_collec.find_one({
+            "_id": degree_doc_id,
+        })
+        for shift in ['M', 'E']:
+            college_shift_doc_id = next((
+                college[shift][1] for college in degree_doc["colleges"]
+                    if shift in college and college_id == college[shift][0]
+                ), None
+            )
+            if college_shift_doc_id:
+                return college_shift_doc_id
+        
+        new_college_doc = self.__college_along_shift_collec.insert_one({
+            "college_id": college_id,
+            "college_name": college_name 
+        })
+
+        self.__degree_collec.update_one({
+            "_id": degree_doc_id
+        }, {
+            "$push": {
+                "colleges": {
+                    degree_id: new_degree.inserted_id
+                }
+            }
+        })
+        return new_degree.inserted_id
+        
 
     def __add_subjects_to_degree(
         self,
@@ -143,8 +182,8 @@ class Result_DB:
                 }
             }
         })
-    
-    def link_subjects_to_required_degree(
+
+    def link_all_metadata(
         self,
         subject_ids: list[str],
         degree_id: str,

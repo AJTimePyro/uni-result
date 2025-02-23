@@ -192,7 +192,7 @@ class IPU_Result_Parser:
             return
         
         subject_id_list = self.__subjects_data_parser(subjects_raw_details)
-        self.__res_db.link_subjects_to_required_degree(
+        self.__res_db.link_all_metadata(
             subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
             degree_name = meta_data['degree_name'],
