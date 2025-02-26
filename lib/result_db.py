@@ -26,7 +26,7 @@ class Result_DB:
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
-    __college_along_shift_collec: pymongo.collection.Collection
+    __college_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
 
     def __init__(self, university_name: str = ''):
@@ -36,7 +36,7 @@ class Result_DB:
         self.__uni_collec = self.__db["universities"]
         self.__batch_collec = self.__db["batches"]
         self.__degree_collec = self.__db["degrees"]
-        self.__college_along_shift_collec = self.__db["colleges"]
+        self.__college_collec = self.__db["colleges"]
         self.__subject_collec = self.__db["subjects"]
 
         if university_name:
@@ -73,7 +73,8 @@ class Result_DB:
         
         new_batch = self.__batch_collec.insert_one({
             "batch_num": batch_num,
-            "degrees": dict()
+            "degrees": dict(),
+            "university_id": self.__uni_document["_id"]
         })
 
         updated_uni_doc = self.__uni_collec.find_one_and_update({
@@ -111,7 +112,8 @@ class Result_DB:
             "degree_name": degree_name,
             "branch_name": branch_name,
             "colleges": dict(),
-            "subjects": dict()
+            "subjects": dict(),
+            "batch_id": batch_doc_id
         })
 
         self.__batch_collec.update_one({
@@ -147,22 +149,44 @@ class Result_DB:
             if college_shift_doc_id:
                 return college_shift_doc_id
         
-        new_college_doc = self.__college_along_shift_collec.insert_one({
-            "college_id": college_id,
-            "college_name": college_name 
-        })
+        existing_clg = self.__college_collec.find_one({
+            "college_name": college_name,
+            "degree_id": degree_doc_id
+        })  # If College already exist then it would be morning shift
 
-        self.__degree_collec.update_one({
-            "_id": degree_doc_id
-        }, {
-            "$push": {
-                "colleges": {
-                    degree_id: new_degree.inserted_id
-                }
-            }
+        new_college_doc = self.__college_collec.insert_one({
+            "college_id": college_id,
+            "college_name": college_name,
+            "degree_id": degree_doc_id
         })
-        return new_degree.inserted_id
+        new_college_doc_id = new_college_doc.inserted_id
+
+        if existing_clg:
+            self.__degree_collec.update_one({
+                    "_id": degree_doc_id,
+                    "colleges": {
+                        "$elemMatch": {
+                            "M.0": existing_clg["college_id"]
+                        }
+                    } # Find the element where M[0] matches
+                }, {
+                    "$set": {
+                        "colleges.$.E": (college_id, new_college_doc_id)  # Directly update the matched element
+                    }
+                }
+            )
+        else:
+            self.__degree_collec.update_one({
+                "_id": degree_doc_id
+            }, {
+                "$push": {
+                    "colleges": {
+                        "M": (college_id, new_college_doc_id)
+                    }
+                }
+            })
         
+        return new_college_doc_id
 
     def __add_subjects_to_degree(
         self,
