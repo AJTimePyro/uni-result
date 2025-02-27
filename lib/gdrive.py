@@ -88,4 +88,17 @@ class GDrive:
         
         return file.get('id')
 
+    def create_folder_inside_parent_dir(self, new_folder_name: str):
+        """
+        It will create a folder in google drive inside the parent folder and return the folder id
+        """
+
+        return self.__create_folder(new_folder_name, self.__parent_folder_id)
+    
+    def create_folder_inside_given_dir(self, new_folder_name: str, parent_folder_id: str):
+        """
+        It will create a folder in google drive inside a given folder and return the folder id
+        """
+
+        return self.__create_folder(new_folder_name, parent_folder_id)
     

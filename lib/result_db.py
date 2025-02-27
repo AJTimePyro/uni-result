@@ -2,6 +2,7 @@ import pymongo
 import re
 from lib.env import ENV
 from lib.utils import create_short_form_name
+from lib.gdrive import GDrive
 
 def divide_degree_and_branch(degreeName: str):
     """
@@ -39,6 +40,8 @@ class Result_DB:
         self.__college_collec = self.__db["colleges"]
         self.__subject_collec = self.__db["subjects"]
 
+        self.__gdrive = GDrive()
+
         if university_name:
             self.connect_to_university(university_name)
         else:
@@ -56,7 +59,8 @@ class Result_DB:
                 "$setOnInsert": {
                     "name": university_name,
                     "short_name": short_name,
-                    "batches": dict()
+                    "batches": dict(),
+                    "folder_id": self.__gdrive.create_folder_inside_parent_dir(university_name)
                 }
             }, upsert = True,
             return_document = pymongo.ReturnDocument.AFTER
@@ -74,7 +78,11 @@ class Result_DB:
         new_batch = self.__batch_collec.insert_one({
             "batch_num": batch_num,
             "degrees": dict(),
-            "university_id": self.__uni_document["_id"]
+            "university_id": self.__uni_document["_id"],
+            "folder_id": self.__gdrive.create_folder_inside_given_dir(
+                str(batch_num),
+                self.__uni_document["folder_id"]
+            )
         })
 
         updated_uni_doc = self.__uni_collec.find_one_and_update({
@@ -113,7 +121,11 @@ class Result_DB:
             "branch_name": branch_name,
             "colleges": dict(),
             "subjects": dict(),
-            "batch_id": batch_doc_id
+            "batch_id": batch_doc_id,
+            "folder_id": self.__gdrive.create_folder_inside_given_dir(
+                f'{degree_id} - {degree_name} ({branch_name})',
+                batch_doc["folder_id"]
+            )
         })
 
         self.__batch_collec.update_one({
@@ -157,7 +169,11 @@ class Result_DB:
         new_college_doc = self.__college_collec.insert_one({
             "college_id": college_id,
             "college_name": college_name,
-            "degree_id": degree_doc_id
+            "degree_id": degree_doc_id,
+            "folder_id": self.__gdrive.create_folder_inside_given_dir(
+                f'{college_id} - {college_name}',
+                degree_doc["folder_id"]
+            )
         })
         new_college_doc_id = new_college_doc.inserted_id
 
@@ -219,7 +235,7 @@ class Result_DB:
         """
         
         batch_doc_id = self.__create_new_batch(batch)
-        degree_doc_id = self.__create_new_degree(batch_doc_id, degree_id, degree_id)
+        degree_doc_id = self.__create_new_degree(batch_doc_id, degree_id, degree_name)
         self.__add_subjects_to_degree(degree_doc_id, subject_ids)
     
     def add_subject(
