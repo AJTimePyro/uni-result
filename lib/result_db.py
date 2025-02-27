@@ -236,14 +236,14 @@ class Result_DB:
         It will create new subject in db and return subject id, and if it is already created then it will just skip
         """
 
-        existing_sub = self.__subject_collect.find_one({
+        existing_sub = self.__subject_collec.find_one({
             "subject_id": subject_id,
             "subject_code": subject_code,
             "subject_name": subject_name
         })
 
         if not existing_sub:
-            self.__subject_collect.insert_one({
+            self.__subject_collec.insert_one({
                 "subject_name": subject_name,
                     "subject_code": subject_code,
                     "subject_id": subject_id,
