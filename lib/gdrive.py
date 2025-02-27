@@ -1,6 +1,7 @@
 from lib.env import ENV
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 SERVICE_ACCOUNT_INFO = {
     "type": "service_account",
@@ -25,6 +26,10 @@ class GDrive:
         self.__parent_folder_id = ENV.GOOGLE_PARENT_FOLDER_ID
 
     def __connect_to_drive(self):
+        """
+        It will connect to google drive
+        """
+
         credentials = Credentials.from_service_account_info(
             SERVICE_ACCOUNT_INFO,
             scopes = SCOPES
@@ -34,3 +39,53 @@ class GDrive:
             'v3',
             credentials = credentials
         )
+    
+    def __create_folder(
+        self,
+        folder_name: str,
+        parent_folder_id: str
+    ) -> str:
+        """
+        It will create a folder in google drive inside a parent folder and return the folder id of created folder
+        """
+
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_folder_id]
+        }
+            
+        folder = self.__drive.files().create(
+            body = file_metadata,
+            fields = 'id'
+        ).execute()
+        
+        return folder.get('id')
+    
+    def __upload_file(
+        self,
+        file_path: str,
+        folder_id: str
+    ) -> str:
+        """
+        It will upload the file to google drive, inside a given folder and return the file id
+        """
+
+        file_name = file_path.split('/')[-1]
+
+        media = MediaFileUpload(
+            file_path,
+            resumable = True
+        )
+        file = self.__drive.files().create(
+            body = {
+                'name': file_name,
+                'parents': [folder_id]
+            },
+            media_body = media,
+            fields = 'id'
+        ).execute()
+        
+        return file.get('id')
+
+    
