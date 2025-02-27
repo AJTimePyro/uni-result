@@ -1,4 +1,6 @@
+import os
 from lib.env import ENV
+from lib.utils import create_local_folder
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -62,7 +64,7 @@ class GDrive:
         
         return folder.get('id')
     
-    def __upload_file(
+    def upload_file(
         self,
         file_path: str,
         folder_id: str
@@ -93,12 +95,28 @@ class GDrive:
         It will create a folder in google drive inside the parent folder and return the folder id
         """
 
-        return self.__create_folder(new_folder_name, self.__parent_folder_id)
+        folder_id = self.__create_folder(new_folder_name, self.__parent_folder_id)
+        create_local_folder(new_folder_name, ENV.LOCAL_RESULT_FOLDER_PATH)
+        return folder_id
     
-    def create_folder_inside_given_dir(self, new_folder_name: str, parent_folder_id: str):
+    def create_folder_inside_given_dir(
+        self,
+        new_folder_name: str,
+        parent_folder_id: str,
+        relative_local_folder_path: str
+    ):
         """
         It will create a folder in google drive inside a given folder and return the folder id
         """
 
-        return self.__create_folder(new_folder_name, parent_folder_id)
+        folder_id = self.__create_folder(new_folder_name, parent_folder_id)
+        create_local_folder(
+            new_folder_name,
+            os.path.join(
+                ENV.LOCAL_RESULT_FOLDER_PATH,
+                relative_local_folder_path
+            )
+        )
+        
+        return folder_id
     

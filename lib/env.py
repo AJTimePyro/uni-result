@@ -17,3 +17,6 @@ class ENV:
 
     # Google Drive Parent Folder ID
     GOOGLE_PARENT_FOLDER_ID = os.getenv("GOOGLE_PARENT_FOLDER_ID")
+
+    # Local Result Folder Path
+    LOCAL_RESULT_FOLDER_PATH = os.getenv("LOCAL_RESULT_FOLDER_PATH")

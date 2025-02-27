@@ -50,26 +50,27 @@ class IPU_Result_Parser:
         while True:
             next_page = self.__get_next_page()
             if next_page is None:
+                self.__storing_result()
                 break
 
             if self.__is_page_contains_subject_list(next_page):
                 self.__storing_result()
-
-                # Clearing previous results
-                self.__students_result_list.clear()
-                self.__students_result_index = -1
 
                 self.__start_subjects_parser(next_page)
             else:
                 self.__start_student_results_parser(next_page)
     
     def __storing_result(self):
-        student_result_df = pd.DataFrame(self.__students_result_list)
+        if len(self.__students_result_list) == 0:
+            return
+        
+        self.__res_db.store_and_upload_result(
+            student_result_list = self.__students_result_list
+        )
 
-        # file_name = f"{uuid.uuid4()}.csv"
-        # file_path = os.path.join("dev", "test_result", file_name)
-        # student_result_df.to_csv(file_path, index=False)
-        del student_result_df
+        # Clearing previous results
+        self.__students_result_list.clear()
+        self.__students_result_index = -1
     
     def __get_next_page(self) -> str | None:
         """
@@ -196,17 +197,11 @@ class IPU_Result_Parser:
             subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
             degree_name = meta_data['degree_name'],
-            batch = meta_data['batch']
+            batch = meta_data['batch'],
+            college_id = meta_data['college_code'],
+            college_name = meta_data['college_name'],
+            semester_num = meta_data['semester_num']
         )
-
-        # {
-        #     'degree_code': degree_code,
-        #     'degree_name': degree_name,
-        #     'semester_num': semester_num,
-        #     'batch': batch,
-        #     'college_code': college_code,
-        #     'college_name': college_name
-        # }
     
     def __start_student_results_parser(self, page_data: str):
         """
