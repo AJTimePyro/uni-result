@@ -1,5 +1,5 @@
 import os
-
+import re
 
 def create_short_form_name(full_name: str) -> str:
     """
@@ -19,3 +19,12 @@ def create_local_folder(folder_name: str, parent_folder_path: str):
     final_folder_path = os.path.join(parent_folder_path, folder_name)
     os.makedirs(final_folder_path, exist_ok=True)
     return final_folder_path
+
+def normalize_spacing(text):
+    """
+    It will normalize the spacing of the text by removing extra spaces and removing a space before '('
+    """
+
+    text = re.sub(r'\s+\(', '(', text)  # Remove space before '('
+    text = re.sub(r'\s+', ' ', text)    # Remove trailing spaces
+    return text

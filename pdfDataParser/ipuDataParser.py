@@ -25,7 +25,7 @@ class IPU_Result_Parser:
         
         # Initializing values
         self.__pdf_pages_list = pdf_pages_list
-        self.__pdf_page_index = -1
+        self.__pdf_page_index = 370
         self.__students_result_list = list()
         self.__students_result_index = -1
         self.__res_db = Result_DB(UNIVERSITY_NAME)
@@ -110,7 +110,7 @@ class IPU_Result_Parser:
         degree_code = exam_meta_data_matched_regex.group(1)
         degree_name = exam_meta_data_matched_regex.group(2).strip()
         semester_num = self.__get_int_val(exam_meta_data_matched_regex.group(3))
-        college_code = self.__get_int_val(exam_meta_data_matched_regex.group(4))
+        college_code = exam_meta_data_matched_regex.group(4).strip()
         college_name = exam_meta_data_matched_regex.group(5).strip()
         
         return {

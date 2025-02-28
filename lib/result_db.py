@@ -6,7 +6,7 @@ import pymongo.collation
 import pymongo.collection
 import pymongo.database
 from lib.env import ENV
-from lib.utils import create_short_form_name
+from lib.utils import create_short_form_name, normalize_spacing
 from lib.gdrive import GDrive
 from lib.logger import result_db_logger
 
@@ -202,11 +202,13 @@ class Result_DB:
         It will create new college if not already exist, also link with respective degree and return college doc id
         """
 
+        college_name = normalize_spacing(college_name)
+        college_folder_name = f'{college_id} - {college_name}'
+        college_doc_id = ''
+
         degree_doc = self.__degree_collec.find_one({
             "_id": degree_doc_id,
         })
-        college_folder_name = f'{college_id} - {college_name}'
-        college_doc_id = ''
 
         for shift in ['M', 'E']:
             college_shift_doc_id = next((
@@ -221,6 +223,7 @@ class Result_DB:
                 })
                 if college_doc:
                     self.__gdrive_upload_folder_id = college_doc["folder_id"]
+                    break
         
         if not college_doc_id:
             existing_clg = self.__college_collec.find_one({
@@ -261,10 +264,10 @@ class Result_DB:
                 )
                 
                 if updated_degree.modified_count > 0:
-                    result_db_logger.info(f"Linked college(morning shift) with degree successfully")
+                    result_db_logger.info(f"Linked college(evening shift) with degree successfully")
                 else:
-                    result_db_logger.error(f"Failed to link college(morning shift) with degree")
-                    raise Exception(f"Failed to link college(morning shift) with degree")
+                    result_db_logger.error(f"Failed to link college(evening shift) with degree")
+                    raise Exception(f"Failed to link college(evening shift) with degree")
                 
             else:
                 result_db_logger.info(f"Linking college(morning shift) with degree...")
