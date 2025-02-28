@@ -129,9 +129,13 @@ class Result_DB:
         """
 
         degree_name, branch_name = divide_degree_and_branch(degree_name)
-
         degree_doc_id = ''
-        degree_folder_name = f'{degree_id} - {degree_name} ({branch_name})'
+
+        if branch_name:
+            degree_folder_name = f'{degree_id} - {degree_name} ({branch_name})'
+        else:
+            degree_folder_name = f'{degree_id} - {degree_name}'
+        
         batch_doc = self.__batch_collec.find_one({
             "_id": batch_doc_id
         })
