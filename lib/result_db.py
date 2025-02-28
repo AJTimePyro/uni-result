@@ -299,8 +299,6 @@ class Result_DB:
         It will add subjects to respected degree in a single batch update
         """
 
-        result_db_logger.info(f"Adding subjects to degree...")
-
         # Create a dictionary of all subject updates
         subject_updates = {
             f"subjects.{subject_id}": subject_doc_id 
@@ -317,9 +315,6 @@ class Result_DB:
 
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
-        else:
-            result_db_logger.error(f"Failed to add subjects to degree")
-            raise Exception(f"Failed to add subjects to degree")
 
     def link_all_metadata(
         self,
