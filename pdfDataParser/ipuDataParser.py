@@ -25,7 +25,7 @@ class IPU_Result_Parser:
         
         # Initializing values
         self.__pdf_pages_list = pdf_pages_list
-        self.__pdf_page_index = 370
+        self.__pdf_page_index = -1
         self.__students_result_list = list()
         self.__students_result_index = -1
         self.__res_db = Result_DB(UNIVERSITY_NAME)
