@@ -86,6 +86,24 @@ class GDrive:
             # Return id of first matching file
             return files[0].get('id')
         return None
+    
+    def __get_folder_id(
+        self,
+        folder_name: str,
+        parent_folder_id: str
+    ) -> str | None:
+        """
+        It will get the folder id if it exists in the parent folder
+        """
+
+        results = self.__drive.files().list(
+            q = f"name='{folder_name}' and '{parent_folder_id}' in parents and mimeType='application/vnd.google-apps.folder'",
+            spaces = 'drive',
+            fields = 'files(id)'
+        ).execute()
+
+        files = results.get('files', [])
+        return files[0].get('id') if files else None
 
     def upload_file(
         self,
@@ -113,10 +131,14 @@ class GDrive:
         
         return file.get('id')
 
-    def create_folder_inside_parent_dir(self, new_folder_name: str):
+    def create_folder_inside_parent_dir(self, new_folder_name: str) -> str:
         """
-        It will create a folder in google drive inside the parent folder and return the folder id
+        It will return existing folder id if folder exists, otherwise create a new folder
+        and return its id
         """
+        existing_folder_id = self.__get_folder_id(new_folder_name, self.__parent_folder_id)
+        if existing_folder_id:
+            return existing_folder_id
 
         folder_id = self.__create_folder(new_folder_name, self.__parent_folder_id)
         create_local_folder(new_folder_name, ENV.LOCAL_RESULT_FOLDER_PATH)
@@ -131,6 +153,10 @@ class GDrive:
         """
         It will create a folder in google drive inside a given folder and return the folder id
         """
+        
+        existing_folder_id = self.__get_folder_id(new_folder_name, parent_folder_id)
+        if existing_folder_id:
+            return existing_folder_id
 
         folder_id = self.__create_folder(new_folder_name, parent_folder_id)
         create_local_folder(
