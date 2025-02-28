@@ -288,7 +288,7 @@ class IPU_Result_Parser:
             if end_index == 0:
                 continue
             student_mark_list.append(raw_student_marks[start_index: end_index].strip())
-        student_mark_list.append(raw_student_marks[start_index: ].strip())
+        student_mark_list.append(raw_student_marks[end_index: ].strip())
         return student_mark_list
     
     def __extract_student_score(self, raw_student_score: str):
