@@ -2,10 +2,6 @@ from pypdf import PageObject
 from lib.result_db import Result_DB
 from typing import Union
 import re
-import pdfParser
-import time
-import uuid
-import os
 import pandas as pd
 
 DEFAULT_STUDENT_RESULT = {
@@ -168,12 +164,13 @@ class IPU_Result_Parser:
         It will divide subjects data into individual subject and then parse each subject
         """
 
-        subject_id_list = list()
+        subject_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
-            subject_id = self.__subject_parser(raw_subject_data)
-            if subject_id:
-                subject_id_list.append(subject_id)
-        return subject_id_list
+            subject_res = self.__subject_parser(raw_subject_data)
+            if subject_res:
+                subject_id, subject_doc_id = subject_res
+                subject_list.append((subject_id, subject_doc_id))
+        return subject_list
     
     def __start_subjects_parser(self, page_data: str):
         """

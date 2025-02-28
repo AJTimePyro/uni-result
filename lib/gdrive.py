@@ -9,16 +9,16 @@ SERVICE_ACCOUNT_INFO = {
     "type": "service_account",
     "project_id": ENV.GOOGLE_PROJECT_ID,
     "private_key_id": ENV.GOOGLE_PRIVATE_KEY_ID,
-    "private_key": ENV.GOOGLE_PRIVATE_KEY.replace('\\n', '\n'),
+    "private_key": ENV.GOOGLE_PRIVATE_KEY,
     "client_email": ENV.GOOGLE_CLIENT_EMAIL,
     "client_id": ENV.GOOGLE_CLIENT_ID,
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": ENV.GOOGLE_CLIENT_X509_CERT_URL
+    "client_x509_cert_url": ENV.GOOGLE_CLIENT_CERT_URL
 }
 
-SCOPES = ['https://www.googleapis.com/auth/drive']
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 class GDrive:
     __drive: any
@@ -145,7 +145,6 @@ class GDrive:
     
     def update_existing_file(
         self,
-        file_name: str,
         folder_id: str,
         updated_file_path: str
     ):
@@ -153,6 +152,7 @@ class GDrive:
         It will update the existing file in google drive
         """
 
+        file_name = updated_file_path.split('/')[-1]
         file_id = self.__get_file_id(file_name, folder_id)
         if file_id:
             media = MediaFileUpload(

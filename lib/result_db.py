@@ -4,6 +4,7 @@ import re
 import pandas as pd
 import pymongo.collation
 import pymongo.collection
+import pymongo.database
 from lib.env import ENV
 from lib.utils import create_short_form_name
 from lib.gdrive import GDrive
@@ -83,17 +84,18 @@ class Result_DB:
         """
 
         batch_doc_id = ''
-        batch_folder_name = str(batch_num)
+        batch_num_str = str(batch_num)
+        self.__final_folder_path_tracker = self.__uni_document["name"]
 
-        if self.__uni_document["batches"] and batch_num in self.__uni_document["batches"]:
-            batch_doc_id = self.__uni_document["batches"][batch_num]["_id"]
+        if self.__uni_document["batches"] and batch_num_str in self.__uni_document["batches"]:
+            batch_doc_id = self.__uni_document["batches"][batch_num_str]
         else:
             new_batch = self.__batch_collec.insert_one({
                 "batch_num": batch_num,
                 "degrees": dict(),
                 "university_id": self.__uni_document["_id"],
                 "folder_id": self.__gdrive.create_folder_inside_given_dir(
-                    batch_folder_name,
+                    batch_num_str,
                     self.__uni_document["folder_id"],
                     self.__final_folder_path_tracker
                 )
@@ -103,18 +105,16 @@ class Result_DB:
             updated_uni_doc = self.__uni_collec.find_one_and_update({
                 "_id": self.__uni_document["_id"]
             }, {
-                "$push": {
-                    "batches": {
-                        batch_num: batch_doc_id
-                    }
+                "$set": {
+                    f"batches.{str(batch_num)}": batch_doc_id
                 }
             }, return_document = pymongo.ReturnDocument.AFTER)
             if updated_uni_doc:
                 self.__uni_document = updated_uni_doc
         
         self.__final_folder_path_tracker = os.path.join(
-            self.__uni_document["name"],
-            batch_folder_name
+            self.__final_folder_path_tracker,
+            batch_num_str
         )
         return batch_doc_id
     
@@ -128,6 +128,8 @@ class Result_DB:
         It will create new degree if not already exist and also link with respective batch. In the end it will also return degree doc id
         """
 
+        degree_name, branch_name = divide_degree_and_branch(degree_name)
+
         degree_doc_id = ''
         degree_folder_name = f'{degree_id} - {degree_name} ({branch_name})'
         batch_doc = self.__batch_collec.find_one({
@@ -135,14 +137,13 @@ class Result_DB:
         })
 
         if batch_doc and degree_id in batch_doc["degrees"]:
-            degree_doc_id = batch_doc["degrees"][degree_id]["_id"]
+            degree_doc_id = batch_doc["degrees"][degree_id]
         else:
-            degree_name, branch_name = divide_degree_and_branch(degree_name)
             new_degree = self.__degree_collec.insert_one({
                 "degree_id": degree_id,
                 "degree_name": degree_name,
                 "branch_name": branch_name,
-                "colleges": dict(),
+                "colleges": list(),
                 "subjects": dict(),
                 "batch_id": batch_doc_id,
                 "folder_id": self.__gdrive.create_folder_inside_given_dir(
@@ -156,10 +157,8 @@ class Result_DB:
             self.__batch_collec.update_one({
                 "_id": batch_doc_id
             }, {
-                "$push": {
-                    "degrees": {
-                        degree_id: degree_doc_id
-                    }
+                "$set": {
+                    f"degrees.{degree_id}": degree_doc_id
                 }
             })
 
@@ -229,7 +228,7 @@ class Result_DB:
                         } # Find the element where M[0] matches
                     }, {
                         "$set": {
-                            "colleges.$.E": (college_id, college_doc_id)  # Directly update the matched element
+                            "colleges.$.E": [college_id, college_doc_id]  # Directly update the matched element
                         }
                     }
                 )
@@ -239,7 +238,7 @@ class Result_DB:
                 }, {
                     "$push": {
                         "colleges": {
-                            "M": (college_id, college_doc_id)
+                            "M": [college_id, college_doc_id]
                         }
                     }
                 })
@@ -253,25 +252,29 @@ class Result_DB:
     def __add_subjects_to_degree(
         self,
         degree_doc_id: str,
-        subject_ids: list[str]
+        subject_ids: list[tuple[str, str]]
     ):
         """
-        It will add subjects to respected degree
+        It will add subjects to respected degree in a single batch update
         """
 
-        self.__degree_collec.find_one_and_update({
-            "_id": degree_doc_id
-        }, {
-            "$push": {
-                "subjects": {
-                    "$each": subject_ids
-                }
+        # Create a dictionary of all subject updates
+        subject_updates = {
+            f"subjects.{subject_id}": subject_doc_id 
+            for subject_id, subject_doc_id in subject_ids
+        }
+        
+        self.__degree_collec.update_one(
+            {
+                "_id": degree_doc_id
+            }, {
+                "$set": subject_updates
             }
-        })
+        )
 
     def link_all_metadata(
         self,
-        subject_ids: list[str],
+        subject_ids: list[tuple[str, str]],
         degree_id: str,
         degree_name:str,
         batch: int,
@@ -298,9 +301,9 @@ class Result_DB:
         max_internal_marks: int,
         max_external_marks: int,
         passing_marks: int
-    ) -> str | None:
+    ) -> tuple[str, str] | None:
         """
-        It will create new subject in db and return subject id, and if it is already created then it will just skip
+        It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
         """
 
         existing_sub = self.__subject_collec.find_one({
@@ -310,7 +313,7 @@ class Result_DB:
         })
 
         if not existing_sub:
-            self.__subject_collec.insert_one({
+            subject_doc = self.__subject_collec.insert_one({
                 "subject_name": subject_name,
                     "subject_code": subject_code,
                     "subject_id": subject_id,
@@ -320,7 +323,7 @@ class Result_DB:
                     "passing_marks": passing_marks
                 }
             )
-            return subject_id
+            return subject_id, subject_doc.inserted_id
 
         else:
             return None
@@ -343,7 +346,7 @@ class Result_DB:
 
         # If file doesn't exist, upload it
         if not os.path.exists(file_path):
-            student_result_df.to_csv(file_path, index = False)
+            student_result_df.to_csv(file_path, index = True)
             self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
             
         # If file exists, update it
@@ -358,5 +361,6 @@ class Result_DB:
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
-            self.__gdrive.update_existing_file(file_path, self.__gdrive_upload_folder_id)
-
+            self.__gdrive.update_existing_file(self.__gdrive_upload_folder_id, file_path)
+        
+        self.__final_folder_path_tracker = self.__uni_document["name"]
