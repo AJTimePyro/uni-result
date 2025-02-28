@@ -1,6 +1,11 @@
 import logging
+import os
+from lib.env import ENV
 
-LOG_FILE = "uni_result.log"
+LOG_FILE = os.path.join(ENV.LOG_FOLDER_PATH, "uni_result.log")
+
+if not os.path.exists(ENV.LOG_FOLDER_PATH):
+    os.makedirs(ENV.LOG_FOLDER_PATH)
 
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 

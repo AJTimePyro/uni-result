@@ -23,3 +23,6 @@ class ENV:
 
     # Local Result Folder Path
     LOCAL_RESULT_FOLDER_PATH = os.getenv("LOCAL_RESULT_FOLDER_PATH")
+
+    # Log Folder Path
+    LOG_FOLDER_PATH = os.getenv("LOG_FOLDER_PATH")
