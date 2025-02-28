@@ -198,7 +198,7 @@ class IPU_Result_Parser:
         # Parsing exam meta data as well as subjects data
         meta_data = self.__exam_meta_data_parser(exam_meta_data)
         if meta_data is None:
-            parser_logger.warning("Exam meta data not found, skipping this page...")
+            parser_logger.warning("Next page is also subject list, skipping this page...")
             return
         
         subject_id_list = self.__subjects_data_parser(subjects_raw_details)
