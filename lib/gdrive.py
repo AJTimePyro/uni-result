@@ -64,6 +64,29 @@ class GDrive:
         
         return folder.get('id')
     
+    def __get_file_id(
+        self,
+        file_name: str,
+        folder_id: str
+    ) -> str | None:
+        """
+        It will get the file id of a file in a given folder
+        """
+        
+        # Search for file in the specified folder
+        results = self.__drive.files().list(
+            q = f"name='{file_name}' and '{folder_id}' in parents",
+            spaces = 'drive',
+            fields = 'files(id)'
+        ).execute()
+
+        files = results.get('files', [])
+        
+        if files:
+            # Return id of first matching file
+            return files[0].get('id')
+        return None
+
     def upload_file(
         self,
         file_path: str,
@@ -120,3 +143,27 @@ class GDrive:
         
         return folder_id
     
+    def update_existing_file(
+        self,
+        file_name: str,
+        folder_id: str,
+        updated_file_path: str
+    ):
+        """
+        It will update the existing file in google drive
+        """
+
+        file_id = self.__get_file_id(file_name, folder_id)
+        if file_id:
+            media = MediaFileUpload(
+                updated_file_path,
+                mimetype = "text/csv",
+                resumable = True
+            )
+            self.__drive.files().update(
+                fileId = file_id,
+                media_body = media
+            ).execute()
+        else:
+            raise FileNotFoundError(f"File {file_name} not found in folder {folder_id}")
+            

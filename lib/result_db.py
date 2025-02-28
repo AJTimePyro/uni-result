@@ -329,7 +329,7 @@ class Result_DB:
         self,
         student_result_list: list[dict[str, str | list[int]]]
     ):
-        # Create unique filename for this result
+        # Create filename for this result
         filename = f"{self.__semester_num:02d}.csv"
         file_path = os.path.join(
             ENV.LOCAL_RESULT_FOLDER_PATH,
@@ -339,6 +339,24 @@ class Result_DB:
 
         # Convert results to dataframe and save as CSV
         student_result_df = pd.DataFrame(student_result_list)
-        student_result_df.to_csv(file_path, index = False)
+        student_result_df.set_index('roll_num', inplace = True)
 
-        self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
+        # If file doesn't exist, upload it
+        if not os.path.exists(file_path):
+            student_result_df.to_csv(file_path, index = False)
+            self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
+            
+        # If file exists, update it
+        else:
+            # Read existing file
+            existing_df = pd.read_csv(file_path)
+            existing_df.set_index('roll_num', inplace = True)
+
+            # Update existing file with new result
+            updated_df = student_result_df.combine_first(existing_df)
+            updated_df.fillna('', inplace = True)
+            updated_df.to_csv(file_path, index = False)
+
+            # Upload updated file to drive
+            self.__gdrive.update_existing_file(file_path, self.__gdrive_upload_folder_id)
+
