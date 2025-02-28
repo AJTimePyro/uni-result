@@ -1,8 +1,8 @@
 from pypdf import PageObject
 from lib.result_db import Result_DB
+from lib.logger import parser_logger
 from typing import Union
 import re
-import pandas as pd
 
 DEFAULT_STUDENT_RESULT = {
     'roll_num': '',
@@ -20,6 +20,7 @@ class IPU_Result_Parser:
 
     def __init__(self, pdf_pages_list: list[PageObject] = []):
         if not pdf_pages_list:
+            parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
         
         # Initializing values
@@ -37,19 +38,25 @@ class IPU_Result_Parser:
         It will actually start process of parsing pdf to extract results and metadatas
         """
 
+        parser_logger.info("Starting to parse PDF pages")
         first_page = self.__get_next_page()
         if self.__is_page_contains_subject_list(first_page):
             self.__start_subjects_parser(first_page)
         else:
+            parser_logger.error("First page doesn't contain subject list.")
             raise Exception("First page doesn't contain subject list.")
 
         while True:
             next_page = self.__get_next_page()
             if next_page is None:
+                parser_logger.info("No more pages to parse, storing remaining results...")
                 self.__storing_result()
                 break
 
+            parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
+
             if self.__is_page_contains_subject_list(next_page):
+                parser_logger.info("Found subject list, storing previous results...")
                 self.__storing_result()
 
                 self.__start_subjects_parser(next_page)
@@ -58,8 +65,10 @@ class IPU_Result_Parser:
     
     def __storing_result(self):
         if len(self.__students_result_list) == 0:
+            parser_logger.warning("No results to store, skipping it...")
             return
         
+        parser_logger.info("Storing and uploading results...")
         self.__res_db.store_and_upload_result(
             student_result_list = self.__students_result_list
         )
@@ -177,6 +186,8 @@ class IPU_Result_Parser:
         It will divide page into two parts, one for metadata and other for subjects data. Then it will parse those two parts
         """
 
+        parser_logger.info("Found subject list, parsing it...")
+
         # Getting index from where subjects actually starts
         subjects_start_index = re.search(r'Pass Marks', page_data).end()
 
@@ -187,6 +198,7 @@ class IPU_Result_Parser:
         # Parsing exam meta data as well as subjects data
         meta_data = self.__exam_meta_data_parser(exam_meta_data)
         if meta_data is None:
+            parser_logger.warning("Exam meta data not found, skipping this page...")
             return
         
         subject_id_list = self.__subjects_data_parser(subjects_raw_details)
@@ -199,6 +211,8 @@ class IPU_Result_Parser:
             college_name = meta_data['college_name'],
             semester_num = meta_data['semester_num']
         )
+        parser_logger.info("Subject list parsed successfully")
+        parser_logger.info("Now parsing student results...")
     
     def __start_student_results_parser(self, page_data: str):
         """
@@ -307,12 +321,3 @@ class IPU_Result_Parser:
 
         # Adding student marks to list
         self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks]
-
-# if __name__ == "__main__":
-#     t1 = time.time()
-#     # obj = pdfParser.PDFParser('')
-#     obj = pdfParser.PDFParser('')
-#     obj.parsePdf()
-#     parser = IPU_Result_Parser(obj.pdf_pages_list)
-#     parser.start()
-#     print(time.time() - t1)

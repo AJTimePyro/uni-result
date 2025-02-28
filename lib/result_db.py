@@ -8,6 +8,7 @@ import pymongo.database
 from lib.env import ENV
 from lib.utils import create_short_form_name
 from lib.gdrive import GDrive
+from lib.logger import result_db_logger
 
 def divide_degree_and_branch(degreeName: str):
     """
@@ -56,13 +57,15 @@ class Result_DB:
         if university_name:
             self.connect_to_university(university_name)
         else:
+            result_db_logger.error("University Name should be provided")
             raise ValueError("University Name should be provided")
     
     def connect_to_university(self, university_name: str, short_name: str = ''):
         """
         It will find university by name. If not found, it will create one. Note: university_name should be a full name
         """
-        
+
+        result_db_logger.info(f"Connecting to {university_name}...")
         short_name = short_name or create_short_form_name(university_name)
         self.__uni_document = self.__uni_collec.find_one_and_update({
                 "name": university_name
@@ -76,6 +79,7 @@ class Result_DB:
             }, upsert = True,
             return_document = pymongo.ReturnDocument.AFTER
         )
+        result_db_logger.info(f"Connected to {university_name} successfully")
         self.__final_folder_path_tracker = university_name
     
     def __create_new_batch(self, batch_num: int):
@@ -90,6 +94,7 @@ class Result_DB:
         if self.__uni_document["batches"] and batch_num_str in self.__uni_document["batches"]:
             batch_doc_id = self.__uni_document["batches"][batch_num_str]
         else:
+            result_db_logger.info(f"Creating new batch {batch_num_str}...")
             new_batch = self.__batch_collec.insert_one({
                 "batch_num": batch_num,
                 "degrees": dict(),
@@ -101,7 +106,9 @@ class Result_DB:
                 )
             })
             batch_doc_id = new_batch.inserted_id
+            result_db_logger.info(f"Batch {batch_num_str} created successfully")
 
+            result_db_logger.info(f"Linking batch with university...")
             updated_uni_doc = self.__uni_collec.find_one_and_update({
                 "_id": self.__uni_document["_id"]
             }, {
@@ -111,7 +118,11 @@ class Result_DB:
             }, return_document = pymongo.ReturnDocument.AFTER)
             if updated_uni_doc:
                 self.__uni_document = updated_uni_doc
-        
+                result_db_logger.info(f"Linked batch with university successfully")
+            else:
+                result_db_logger.error(f"Failed to link batch with university")
+                raise Exception(f"Failed to link batch with university")
+
         self.__final_folder_path_tracker = os.path.join(
             self.__final_folder_path_tracker,
             batch_num_str
@@ -143,6 +154,7 @@ class Result_DB:
         if batch_doc and degree_id in batch_doc["degrees"]:
             degree_doc_id = batch_doc["degrees"][degree_id]
         else:
+            result_db_logger.info(f"Creating new degree {degree_id} - {degree_name} {branch_name if branch_name else ''}...")
             new_degree = self.__degree_collec.insert_one({
                 "degree_id": degree_id,
                 "degree_name": degree_name,
@@ -157,8 +169,10 @@ class Result_DB:
                 )
             })
             degree_doc_id = new_degree.inserted_id
+            result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} created successfully")
 
-            self.__batch_collec.update_one({
+            result_db_logger.info(f"Linking degree with batch...")
+            updated_batch = self.__batch_collec.update_one({
                 "_id": batch_doc_id
             }, {
                 "$set": {
@@ -166,6 +180,12 @@ class Result_DB:
                 }
             })
 
+            if updated_batch.modified_count > 0:
+                result_db_logger.info(f"Linked degree with batch successfully")
+            else:
+                result_db_logger.error(f"Failed to link degree with batch")
+                raise Exception(f"Failed to link degree with batch")
+            
         self.__final_folder_path_tracker = os.path.join(
             self.__final_folder_path_tracker,
             degree_folder_name
@@ -208,6 +228,7 @@ class Result_DB:
                 "degree_id": degree_doc_id
             })  # If College already exist then it would be morning shift
 
+            result_db_logger.info(f"Creating new college {college_id} - {college_name}...")
             new_college_details = {
                 "college_id": college_id,
                 "college_name": college_name,
@@ -221,9 +242,11 @@ class Result_DB:
             new_college_doc = self.__college_collec.insert_one(new_college_details)
             college_doc_id = new_college_doc.inserted_id
             self.__gdrive_upload_folder_id = new_college_details["folder_id"]
+            result_db_logger.info(f"College {college_id} - {college_name} created successfully")
 
             if existing_clg:
-                self.__degree_collec.update_one({
+                result_db_logger.info(f"Linking college(evening shift) with degree...")
+                updated_degree = self.__degree_collec.update_one({
                         "_id": degree_doc_id,
                         "colleges": {
                             "$elemMatch": {
@@ -236,8 +259,16 @@ class Result_DB:
                         }
                     }
                 )
+                
+                if updated_degree.modified_count > 0:
+                    result_db_logger.info(f"Linked college(morning shift) with degree successfully")
+                else:
+                    result_db_logger.error(f"Failed to link college(morning shift) with degree")
+                    raise Exception(f"Failed to link college(morning shift) with degree")
+                
             else:
-                self.__degree_collec.update_one({
+                result_db_logger.info(f"Linking college(morning shift) with degree...")
+                updated_degree = self.__degree_collec.update_one({
                     "_id": degree_doc_id
                 }, {
                     "$push": {
@@ -246,6 +277,12 @@ class Result_DB:
                         }
                     }
                 })
+
+                if updated_degree.modified_count > 0:
+                    result_db_logger.info(f"Linked college(morning shift) with degree successfully")
+                else:
+                    result_db_logger.error(f"Failed to link college(morning shift) with degree")
+                    raise Exception(f"Failed to link college(morning shift) with degree")
             
         self.__final_folder_path_tracker = os.path.join(
             self.__final_folder_path_tracker,
@@ -262,19 +299,27 @@ class Result_DB:
         It will add subjects to respected degree in a single batch update
         """
 
+        result_db_logger.info(f"Adding subjects to degree...")
+
         # Create a dictionary of all subject updates
         subject_updates = {
             f"subjects.{subject_id}": subject_doc_id 
             for subject_id, subject_doc_id in subject_ids
         }
         
-        self.__degree_collec.update_one(
+        updated_degree = self.__degree_collec.update_one(
             {
                 "_id": degree_doc_id
             }, {
                 "$set": subject_updates
             }
         )
+
+        if updated_degree.modified_count > 0:
+            result_db_logger.info(f"Subjects added to degree successfully")
+        else:
+            result_db_logger.error(f"Failed to add subjects to degree")
+            raise Exception(f"Failed to add subjects to degree")
 
     def link_all_metadata(
         self,
@@ -317,6 +362,7 @@ class Result_DB:
         })
 
         if not existing_sub:
+            result_db_logger.info(f"Creating new subject {subject_id} - {subject_name}...")
             subject_doc = self.__subject_collec.insert_one({
                 "subject_name": subject_name,
                     "subject_code": subject_code,
@@ -327,6 +373,7 @@ class Result_DB:
                     "passing_marks": passing_marks
                 }
             )
+            result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
             return subject_id, subject_doc.inserted_id
 
         else:
@@ -336,6 +383,10 @@ class Result_DB:
         self,
         student_result_list: list[dict[str, str | list[int]]]
     ):
+        """
+        It will store and upload result to drive
+        """
+
         # Create filename for this result
         filename = f"{self.__semester_num:02d}.csv"
         file_path = os.path.join(
@@ -350,11 +401,15 @@ class Result_DB:
 
         # If file doesn't exist, upload it
         if not os.path.exists(file_path):
+            result_db_logger.info(f"Storing new result...")
             student_result_df.to_csv(file_path, index = True)
             self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
-            
+            result_db_logger.info(f"Result stored and uploaded successfully")
+
         # If file exists, update it
         else:
+            result_db_logger.info(f"Updating existing result...")
+
             # Read existing file
             existing_df = pd.read_csv(file_path)
             existing_df.set_index('roll_num', inplace = True)
@@ -366,5 +421,6 @@ class Result_DB:
 
             # Upload updated file to drive
             self.__gdrive.update_existing_file(self.__gdrive_upload_folder_id, file_path)
+            result_db_logger.info(f"Result updated and uploaded successfully")
         
         self.__final_folder_path_tracker = self.__uni_document["name"]

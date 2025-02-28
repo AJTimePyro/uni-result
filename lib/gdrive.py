@@ -1,6 +1,7 @@
 import os
 from lib.env import ENV
 from lib.utils import create_local_folder
+from lib.logger import gdrive_logger
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -115,6 +116,7 @@ class GDrive:
         """
 
         file_name = file_path.split('/')[-1]
+        gdrive_logger.info(f"Uploading result to drive...")
 
         media = MediaFileUpload(
             file_path,
@@ -128,7 +130,8 @@ class GDrive:
             media_body = media,
             fields = 'id'
         ).execute()
-        
+
+        gdrive_logger.info(f"Result uploaded to drive successfully")
         return file.get('id')
 
     def create_folder_inside_parent_dir(self, new_folder_name: str) -> str:
@@ -153,7 +156,7 @@ class GDrive:
         """
         It will create a folder in google drive inside a given folder and return the folder id
         """
-        
+
         existing_folder_id = self.__get_folder_id(new_folder_name, parent_folder_id)
         if existing_folder_id:
             return existing_folder_id
@@ -179,6 +182,7 @@ class GDrive:
         """
 
         file_name = updated_file_path.split('/')[-1]
+        gdrive_logger.info(f"Updating existing result in drive...")
         file_id = self.__get_file_id(file_name, folder_id)
         if file_id:
             media = MediaFileUpload(
@@ -190,6 +194,9 @@ class GDrive:
                 fileId = file_id,
                 media_body = media
             ).execute()
+            gdrive_logger.info(f"Result updated in drive successfully")
+            
         else:
+            gdrive_logger.error(f"File {file_name} not found in folder {folder_id}")
             raise FileNotFoundError(f"File {file_name} not found in folder {folder_id}")
             
