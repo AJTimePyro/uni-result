@@ -1,6 +1,7 @@
 from pypdf import PageObject
 from lib.result_db import Result_DB
 from lib.logger import parser_logger
+from lib.utils import normalize_spacing
 from typing import Union
 import re
 
@@ -112,6 +113,8 @@ class IPU_Result_Parser:
         semester_num = self.__get_int_val(exam_meta_data_matched_regex.group(3))
         college_code = exam_meta_data_matched_regex.group(4).strip()
         college_name = exam_meta_data_matched_regex.group(5).strip()
+
+        updated_college_name = normalize_spacing(college_name)
         
         return {
             'degree_code': degree_code,
@@ -119,7 +122,8 @@ class IPU_Result_Parser:
             'semester_num': semester_num,
             'batch': batch,
             'college_code': college_code,
-            'college_name': college_name
+            'college_name': updated_college_name,
+            'is_evening_shift': updated_college_name != college_name # Evening Shift have slightly different name(having extra spaces)
         }
     
     def __get_int_val(self, val: str) -> int:
@@ -209,7 +213,8 @@ class IPU_Result_Parser:
             batch = meta_data['batch'],
             college_id = meta_data['college_code'],
             college_name = meta_data['college_name'],
-            semester_num = meta_data['semester_num']
+            semester_num = meta_data['semester_num'],
+            is_evening_shift = meta_data['is_evening_shift']
         )
         parser_logger.info("Subject list parsed successfully")
         parser_logger.info("Now parsing student results...")

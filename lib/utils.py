@@ -20,7 +20,7 @@ def create_local_folder(folder_name: str, parent_folder_path: str):
     os.makedirs(final_folder_path, exist_ok=True)
     return final_folder_path
 
-def normalize_spacing(text):
+def normalize_spacing(text: str) -> str:
     """
     It will normalize the spacing of the text by removing extra spaces and removing a space before '('
     """

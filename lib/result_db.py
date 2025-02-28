@@ -6,7 +6,7 @@ import pymongo.collation
 import pymongo.collection
 import pymongo.database
 from lib.env import ENV
-from lib.utils import create_short_form_name, normalize_spacing
+from lib.utils import create_short_form_name
 from lib.gdrive import GDrive
 from lib.logger import result_db_logger
 
@@ -26,6 +26,11 @@ def divide_degree_and_branch(degreeName: str):
         branch_name = degree_branch_matched_regex.group(2).strip()
     
     return degree_name, branch_name
+
+SHIFT_COLLEGE_MAP = {
+    'M': 'morning',
+    'E': 'evening'
+}
 
 class Result_DB:
     __client : pymongo.MongoClient
@@ -196,40 +201,48 @@ class Result_DB:
         self,
         degree_doc_id: str,
         college_id: str,
-        college_name: str
+        college_name: str,
+        is_evening_shift: bool = False
     ) -> str:
         """
         It will create new college if not already exist, also link with respective degree and return college doc id
         """
 
-        college_name = normalize_spacing(college_name)
         college_folder_name = f'{college_id} - {college_name}'
         college_doc_id = ''
+        shift = 'M'
+        updated_degree = None
 
         degree_doc = self.__degree_collec.find_one({
             "_id": degree_doc_id,
         })
 
-        for shift in ['M', 'E']:
-            college_shift_doc_id = next((
-                college[shift][1] for college in degree_doc["colleges"]
-                    if shift in college and college_id == college[shift][0]
-                ), None
-            )
-            if college_shift_doc_id:
-                college_doc_id = college_shift_doc_id
-                college_doc = self.__college_collec.find_one({
-                    "_id": college_doc_id
-                })
-                if college_doc:
-                    self.__gdrive_upload_folder_id = college_doc["folder_id"]
-                    break
+        if is_evening_shift:
+            shift = 'E'            
+
+        # Find the college doc id for the given college id and shift
+        college_doc_id = next((
+            college[shift][1] for college in degree_doc["colleges"]
+                if shift in college and college_id == college[shift][0]
+            ), None
+        )
+
+        # Getting gdrive folder id, if college already existing for given id and shift
+        if college_doc_id:
+            college_doc = self.__college_collec.find_one({
+                "_id": college_doc_id
+            })
+            if college_doc:
+                self.__gdrive_upload_folder_id = college_doc["folder_id"]
+            else:
+                college_doc_id = None   
         
+        # If not existing then create new college for particular id and shift
         if not college_doc_id:
             existing_clg = self.__college_collec.find_one({
                 "college_name": college_name,
                 "degree_id": degree_doc_id
-            })  # If College already exist then it would be morning shift
+            })
 
             result_db_logger.info(f"Creating new college {college_id} - {college_name}...")
             new_college_details = {
@@ -247,45 +260,38 @@ class Result_DB:
             self.__gdrive_upload_folder_id = new_college_details["folder_id"]
             result_db_logger.info(f"College {college_id} - {college_name} created successfully")
 
+            result_db_logger.info(f"Linking college({SHIFT_COLLEGE_MAP[shift]} shift) with degree...")
             if existing_clg:
-                result_db_logger.info(f"Linking college(evening shift) with degree...")
+                # Already college with different shift exist, merge new one with existing one in array and link in degree
                 updated_degree = self.__degree_collec.update_one({
-                        "_id": degree_doc_id,
-                        "colleges": {
-                            "$elemMatch": {
-                                "M.0": existing_clg["college_id"]
-                            }
-                        } # Find the element where M[0] matches
-                    }, {
+                    "_id": degree_doc_id,
+                    "colleges": {
+                        "$elemMatch": {
+                            f"{'M' if shift == 'M' else 'E'}.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
+                        }
+                    }}, {
                         "$set": {
-                            "colleges.$.E": [college_id, college_doc_id]  # Directly update the matched element
+                            f"colleges.$.{shift}": [college_id, college_doc_id]  # Directly update the matched element
                         }
                     }
                 )
-                
-                if updated_degree.modified_count > 0:
-                    result_db_logger.info(f"Linked college(evening shift) with degree successfully")
-                else:
-                    result_db_logger.error(f"Failed to link college(evening shift) with degree")
-                    raise Exception(f"Failed to link college(evening shift) with degree")
-                
             else:
-                result_db_logger.info(f"Linking college(morning shift) with degree...")
+                # No college with different shift exist, so just push new one in array and link in degree
                 updated_degree = self.__degree_collec.update_one({
                     "_id": degree_doc_id
                 }, {
                     "$push": {
                         "colleges": {
-                            "M": [college_id, college_doc_id]
+                            shift: [college_id, college_doc_id]
                         }
                     }
                 })
 
-                if updated_degree.modified_count > 0:
-                    result_db_logger.info(f"Linked college(morning shift) with degree successfully")
-                else:
-                    result_db_logger.error(f"Failed to link college(morning shift) with degree")
-                    raise Exception(f"Failed to link college(morning shift) with degree")
+            if updated_degree.modified_count > 0:
+                result_db_logger.info(f"Linked college({SHIFT_COLLEGE_MAP[shift]} shift) with degree successfully")
+            else:
+                result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
+                raise Exception(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
             
         self.__final_folder_path_tracker = os.path.join(
             self.__final_folder_path_tracker,
@@ -327,7 +333,8 @@ class Result_DB:
         batch: int,
         college_id: str,
         college_name: str,
-        semester_num: int
+        semester_num: int,
+        is_evening_shift: bool = False
     ) -> str:
         """
         It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist, and returns final folder path for uploading the result
@@ -336,7 +343,7 @@ class Result_DB:
         batch_doc_id = self.__create_new_batch(batch)
         degree_doc_id = self.__create_new_degree(batch_doc_id, degree_id, degree_name)
         self.__add_subjects_to_degree(degree_doc_id, subject_ids)
-        self.__create_new_college(degree_doc_id, college_id, college_name)
+        self.__create_new_college(degree_doc_id, college_id, college_name, is_evening_shift)
         self.__semester_num = semester_num
         
     def add_subject(
