@@ -25,6 +25,6 @@ def normalize_spacing(text: str) -> str:
     It will normalize the spacing of the text by removing extra spaces and removing a space before '('
     """
 
-    text = re.sub(r'\s+\(', '(', text)  # Remove space before '('
+    text = re.sub(r'\(', ' (', text)    # Add space before '('
     text = re.sub(r'\s+', ' ', text)    # Remove trailing spaces
     return text
