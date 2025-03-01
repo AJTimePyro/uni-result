@@ -125,7 +125,7 @@ class Result_DB:
                 self.__uni_document = updated_uni_doc
                 result_db_logger.info(f"Linked batch with university successfully")
             else:
-                result_db_logger.error(f"Failed to link batch with university")
+                result_db_logger.error(f"Failed to link batch with university, batch - {batch_num_str}; uni - {self.__uni_document['_id']}")
                 raise Exception(f"Failed to link batch with university")
 
         self.__final_folder_path_tracker = os.path.join(
@@ -188,7 +188,7 @@ class Result_DB:
             if updated_batch.modified_count > 0:
                 result_db_logger.info(f"Linked degree with batch successfully")
             else:
-                result_db_logger.error(f"Failed to link degree with batch")
+                result_db_logger.error(f"Failed to link degree with batch, {updated_batch}")
                 raise Exception(f"Failed to link degree with batch")
             
         self.__final_folder_path_tracker = os.path.join(
@@ -216,6 +216,7 @@ class Result_DB:
         degree_doc = self.__degree_collec.find_one({
             "_id": degree_doc_id,
         })
+        print(degree_doc)
 
         if is_evening_shift:
             shift = 'E'            
@@ -267,7 +268,7 @@ class Result_DB:
                     "_id": degree_doc_id,
                     "colleges": {
                         "$elemMatch": {
-                            f"{'M' if shift == 'M' else 'E'}.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
+                            f"{'M' if shift == 'E' else 'M'}.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
                         }
                     }}, {
                         "$set": {
@@ -290,7 +291,7 @@ class Result_DB:
             if updated_degree.modified_count > 0:
                 result_db_logger.info(f"Linked college({SHIFT_COLLEGE_MAP[shift]} shift) with degree successfully")
             else:
-                result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
+                result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree, {updated_degree}")
                 raise Exception(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
             
         self.__final_folder_path_tracker = os.path.join(
