@@ -422,7 +422,6 @@ class Result_DB:
             # Update existing file with new result
             updated_df = student_result_df.combine_first(existing_df)
             updated_df.fillna('', inplace = True)
-            updated_df.set_index('roll_num', inplace = True)
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
