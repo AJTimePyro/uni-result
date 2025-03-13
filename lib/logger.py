@@ -8,13 +8,14 @@ if not os.path.exists(ENV.LOG_FOLDER_PATH):
     os.makedirs(ENV.LOG_FOLDER_PATH)
 
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Configure a common handler (File + Console)
 file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+file_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
 
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+console_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
 
 # Configure a logger instance
 def get_logger(name: str):

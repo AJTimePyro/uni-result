@@ -216,7 +216,6 @@ class Result_DB:
         degree_doc = self.__degree_collec.find_one({
             "_id": degree_doc_id,
         })
-        print(degree_doc)
 
         if is_evening_shift:
             shift = 'E'            

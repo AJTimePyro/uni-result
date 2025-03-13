@@ -2,6 +2,7 @@ from pypdf import PageObject
 from lib.result_db import Result_DB
 from lib.logger import parser_logger
 from lib.utils import normalize_spacing
+from lib.customErrors import OldSessionException
 from typing import Union
 import re
 
@@ -17,9 +18,10 @@ class IPU_Result_Parser:
     __pdf_page_index: int
     __students_result_list: list[dict[str, str | list[int]]]
     __students_result_index: int
+    __starting_session: int
     __res_db: Result_DB
 
-    def __init__(self, pdf_pages_list: list[PageObject] = []):
+    def __init__(self, pdf_pages_list: list[PageObject] = [], session_start = 2020):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
@@ -29,6 +31,7 @@ class IPU_Result_Parser:
         self.__pdf_page_index = -1
         self.__students_result_list = list()
         self.__students_result_index = -1
+        self.__starting_session = session_start
         self.__res_db = Result_DB(UNIVERSITY_NAME)
     
     def start(self):
@@ -40,6 +43,7 @@ class IPU_Result_Parser:
         """
 
         parser_logger.info("Starting to parse PDF pages")
+        self.__skip_till_get_subjects_list()
         first_page = self.__get_next_page()
         if self.__is_page_contains_subject_list(first_page):
             self.__start_subjects_parser(first_page)
@@ -105,6 +109,8 @@ class IPU_Result_Parser:
         batch = self.__peek_to_get_batch()
         if batch == 0:
             return None
+        elif batch < self.__starting_session:
+            raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
 
@@ -151,6 +157,17 @@ class IPU_Result_Parser:
 
         self.__pdf_page_index -= 1
         return batch
+    
+    def __skip_till_get_subjects_list(self):
+        """
+        It will skip all the pages till it finds subject list
+        """
+
+        next_page = self.__get_next_page()
+        while next_page is not None and not self.__is_page_contains_subject_list(next_page):
+            next_page = self.__get_next_page()
+        
+        self.__pdf_page_index -= 1
     
     def __subject_parser(self, raw_subject_data: str):
         """
@@ -200,11 +217,16 @@ class IPU_Result_Parser:
         subjects_raw_details = page_data[subjects_start_index:].strip()
 
         # Parsing exam meta data as well as subjects data
-        meta_data = self.__exam_meta_data_parser(exam_meta_data)
-        if meta_data is None:
-            parser_logger.warning("Next page is also subject list, skipping this page...")
+        try:
+            meta_data = self.__exam_meta_data_parser(exam_meta_data)
+            if meta_data is None:
+                parser_logger.warning("Next page is also subject list, skipping this page...")
+                return
+        except OldSessionException as err:
+            parser_logger.warning(err.message + " ,Skipping pages till finding new subject list...")
+            self.__skip_till_get_subjects_list()
             return
-        
+
         subject_id_list = self.__subjects_data_parser(subjects_raw_details)
         self.__res_db.link_all_metadata(
             subject_ids = subject_id_list,
