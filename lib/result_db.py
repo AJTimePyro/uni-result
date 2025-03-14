@@ -2,13 +2,11 @@ import os
 import pymongo
 import re
 import pandas as pd
-import pymongo.collation
-import pymongo.collection
-import pymongo.database
 from lib.env import ENV
 from lib.utils import create_short_form_name
 from lib.gdrive import GDrive
 from lib.logger import result_db_logger
+from lib.db import DB
 
 def divide_degree_and_branch(degreeName: str):
     """
@@ -32,9 +30,7 @@ SHIFT_COLLEGE_MAP = {
     'E': 'evening'
 }
 
-class Result_DB:
-    __client : pymongo.MongoClient
-    __db: pymongo.database.Database
+class Result_DB(DB):
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
@@ -47,14 +43,13 @@ class Result_DB:
     __semester_num: int
 
     def __init__(self, university_name: str = ''):
-        self.__client = pymongo.MongoClient(ENV.MONGO_STR)
-        self.__db = self.__client["uni_result"]
+        super().__init__()
 
-        self.__uni_collec = self.__db["universities"]
-        self.__batch_collec = self.__db["batches"]
-        self.__degree_collec = self.__db["degrees"]
-        self.__college_collec = self.__db["colleges"]
-        self.__subject_collec = self.__db["subjects"]
+        self.__uni_collec = self._uni_collec
+        self.__batch_collec = self._batch_collec
+        self.__degree_collec = self._degree_collec
+        self.__college_collec = self._college_collec
+        self.__subject_collec = self._subject_collec
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
