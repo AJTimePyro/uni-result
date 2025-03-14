@@ -32,12 +32,13 @@ class IPU_Result_Parser:
         self.__students_result_list = list()
         self.__students_result_index = -1
         self.__starting_session = session_start
-        self.__res_db = Result_DB(UNIVERSITY_NAME)
+        self.__res_db = None
     
-    def start(self):
-        self.__parsing_pdf_pages()
+    async def start(self):
+        self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
+        await self.__parsing_pdf_pages()
     
-    def __parsing_pdf_pages(self):
+    async def __parsing_pdf_pages(self):
         """
         It will actually start process of parsing pdf to extract results and metadatas
         """
@@ -46,7 +47,7 @@ class IPU_Result_Parser:
         self.__skip_till_get_subjects_list()
         first_page = self.__get_next_page()
         if self.__is_page_contains_subject_list(first_page):
-            self.__start_subjects_parser(first_page)
+            await self.__start_subjects_parser(first_page)
         else:
             parser_logger.error("First page doesn't contain subject list.")
             raise Exception("First page doesn't contain subject list.")
@@ -64,7 +65,7 @@ class IPU_Result_Parser:
                 parser_logger.info("Found subject list, storing previous results...")
                 self.__storing_result()
 
-                self.__start_subjects_parser(next_page)
+                await self.__start_subjects_parser(next_page)
             else:
                 self.__start_student_results_parser(next_page)
     
@@ -169,7 +170,7 @@ class IPU_Result_Parser:
         
         self.__pdf_page_index -= 1
     
-    def __subject_parser(self, raw_subject_data: str):
+    async def __subject_parser(self, raw_subject_data: str):
         """
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
@@ -187,22 +188,22 @@ class IPU_Result_Parser:
         subject_external_marks = self.__get_int_val(subject_detail.group(7))
         subject_passing_marks = self.__get_int_val(subject_detail.group(8))
 
-        return self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
+        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
     
-    def __subjects_data_parser(self, raw_subjects_data: str):
+    async def __subjects_data_parser(self, raw_subjects_data: str):
         """
         It will divide subjects data into individual subject and then parse each subject
         """
 
         subject_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
-            subject_res = self.__subject_parser(raw_subject_data)
+            subject_res = await self.__subject_parser(raw_subject_data)
             if subject_res:
                 subject_id, subject_doc_id = subject_res
                 subject_list.append((subject_id, subject_doc_id))
         return subject_list
     
-    def __start_subjects_parser(self, page_data: str):
+    async def __start_subjects_parser(self, page_data: str):
         """
         It will divide page into two parts, one for metadata and other for subjects data. Then it will parse those two parts
         """
@@ -227,8 +228,8 @@ class IPU_Result_Parser:
             self.__skip_till_get_subjects_list()
             return
 
-        subject_id_list = self.__subjects_data_parser(subjects_raw_details)
-        self.__res_db.link_all_metadata(
+        subject_id_list = await self.__subjects_data_parser(subjects_raw_details)
+        await self.__res_db.link_all_metadata(
             subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
             degree_name = meta_data['degree_name'],

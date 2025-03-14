@@ -55,21 +55,30 @@ class Result_DB(DB):
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
+    
+    @classmethod
+    async def create(cls, university_name: str = ''):
+        """
+        Creating instance of Result_DB asyncronously
+        """
+
+        self = cls()
 
         if university_name:
-            self.connect_to_university(university_name)
+            await self.connect_to_university(university_name)
+            return self
         else:
             result_db_logger.error("University Name should be provided")
             raise ValueError("University Name should be provided")
     
-    def connect_to_university(self, university_name: str, short_name: str = ''):
+    async def connect_to_university(self, university_name: str, short_name: str = ''):
         """
         It will find university by name. If not found, it will create one. Note: university_name should be a full name
         """
 
         result_db_logger.info(f"Connecting to {university_name}...")
         short_name = short_name or create_short_form_name(university_name)
-        self.__uni_document = self.__uni_collec.find_one_and_update({
+        self.__uni_document = await self.__uni_collec.find_one_and_update({
                 "name": university_name
             }, {
                 "$setOnInsert": {
@@ -84,7 +93,7 @@ class Result_DB(DB):
         result_db_logger.info(f"Connected to {university_name} successfully")
         self.__final_folder_path_tracker = university_name
     
-    def __create_new_batch(self, batch_num: int):
+    async def __create_new_batch(self, batch_num: int):
         """
         It will create new batch if not already exist and also link with respective university. In the end it will also return batch doc id
         """
@@ -97,7 +106,7 @@ class Result_DB(DB):
             batch_doc_id = self.__uni_document["batches"][batch_num_str]
         else:
             result_db_logger.info(f"Creating new batch {batch_num_str}...")
-            new_batch = self.__batch_collec.insert_one({
+            new_batch = await self.__batch_collec.insert_one({
                 "batch_num": batch_num,
                 "degrees": dict(),
                 "university_id": self.__uni_document["_id"],
@@ -111,7 +120,7 @@ class Result_DB(DB):
             result_db_logger.info(f"Batch {batch_num_str} created successfully")
 
             result_db_logger.info(f"Linking batch with university...")
-            updated_uni_doc = self.__uni_collec.find_one_and_update({
+            updated_uni_doc = await self.__uni_collec.find_one_and_update({
                 "_id": self.__uni_document["_id"]
             }, {
                 "$set": {
@@ -131,7 +140,7 @@ class Result_DB(DB):
         )
         return batch_doc_id
     
-    def __create_new_degree(
+    async def __create_new_degree(
         self,
         batch_doc_id: int,
         degree_id: str,
@@ -149,7 +158,7 @@ class Result_DB(DB):
         else:
             degree_folder_name = f'{degree_id} - {degree_name}'
         
-        batch_doc = self.__batch_collec.find_one({
+        batch_doc = await self.__batch_collec.find_one({
             "_id": batch_doc_id
         })
 
@@ -157,7 +166,7 @@ class Result_DB(DB):
             degree_doc_id = batch_doc["degrees"][degree_id]
         else:
             result_db_logger.info(f"Creating new degree {degree_id} - {degree_name} {branch_name if branch_name else ''}...")
-            new_degree = self.__degree_collec.insert_one({
+            new_degree = await self.__degree_collec.insert_one({
                 "degree_id": degree_id,
                 "degree_name": degree_name,
                 "branch_name": branch_name,
@@ -174,7 +183,7 @@ class Result_DB(DB):
             result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} created successfully")
 
             result_db_logger.info(f"Linking degree with batch...")
-            updated_batch = self.__batch_collec.update_one({
+            updated_batch = await self.__batch_collec.update_one({
                 "_id": batch_doc_id
             }, {
                 "$set": {
@@ -194,7 +203,7 @@ class Result_DB(DB):
         )
         return degree_doc_id
 
-    def __create_new_college(
+    async def __create_new_college(
         self,
         degree_doc_id: str,
         college_id: str,
@@ -210,7 +219,7 @@ class Result_DB(DB):
         shift = 'M'
         updated_degree = None
 
-        degree_doc = self.__degree_collec.find_one({
+        degree_doc = await self.__degree_collec.find_one({
             "_id": degree_doc_id,
         })
 
@@ -226,7 +235,7 @@ class Result_DB(DB):
 
         # Getting gdrive folder id, if college already existing for given id and shift
         if college_doc_id:
-            college_doc = self.__college_collec.find_one({
+            college_doc = await self.__college_collec.find_one({
                 "_id": college_doc_id
             })
             if college_doc:
@@ -236,7 +245,7 @@ class Result_DB(DB):
         
         # If not existing then create new college for particular id and shift
         if not college_doc_id:
-            existing_clg = self.__college_collec.find_one({
+            existing_clg = await self.__college_collec.find_one({
                 "college_name": college_name,
                 "degree_id": degree_doc_id
             })
@@ -252,7 +261,7 @@ class Result_DB(DB):
                     self.__final_folder_path_tracker
                 )
             }
-            new_college_doc = self.__college_collec.insert_one(new_college_details)
+            new_college_doc = await self.__college_collec.insert_one(new_college_details)
             college_doc_id = new_college_doc.inserted_id
             self.__gdrive_upload_folder_id = new_college_details["folder_id"]
             result_db_logger.info(f"College {college_id} - {college_name} created successfully")
@@ -260,7 +269,7 @@ class Result_DB(DB):
             result_db_logger.info(f"Linking college({SHIFT_COLLEGE_MAP[shift]} shift) with degree...")
             if existing_clg:
                 # Already college with different shift exist, merge new one with existing one in array and link in degree
-                updated_degree = self.__degree_collec.update_one({
+                updated_degree = await self.__degree_collec.update_one({
                     "_id": degree_doc_id,
                     "colleges": {
                         "$elemMatch": {
@@ -274,7 +283,7 @@ class Result_DB(DB):
                 )
             else:
                 # No college with different shift exist, so just push new one in array and link in degree
-                updated_degree = self.__degree_collec.update_one({
+                updated_degree = await self.__degree_collec.update_one({
                     "_id": degree_doc_id
                 }, {
                     "$push": {
@@ -296,7 +305,7 @@ class Result_DB(DB):
         )
         return college_doc_id
 
-    def __add_subjects_to_degree(
+    async def __add_subjects_to_degree(
         self,
         degree_doc_id: str,
         subject_ids: list[tuple[str, str]]
@@ -311,7 +320,7 @@ class Result_DB(DB):
             for subject_id, subject_doc_id in subject_ids
         }
         
-        updated_degree = self.__degree_collec.update_one(
+        updated_degree = await self.__degree_collec.update_one(
             {
                 "_id": degree_doc_id
             }, {
@@ -322,7 +331,7 @@ class Result_DB(DB):
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
 
-    def link_all_metadata(
+    async def link_all_metadata(
         self,
         subject_ids: list[tuple[str, str]],
         degree_id: str,
@@ -337,13 +346,13 @@ class Result_DB(DB):
         It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist, and returns final folder path for uploading the result
         """
         
-        batch_doc_id = self.__create_new_batch(batch)
-        degree_doc_id = self.__create_new_degree(batch_doc_id, degree_id, degree_name)
-        self.__add_subjects_to_degree(degree_doc_id, subject_ids)
-        self.__create_new_college(degree_doc_id, college_id, college_name, is_evening_shift)
+        batch_doc_id = await self.__create_new_batch(batch)
+        degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
+        await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
+        await self.__create_new_college(degree_doc_id, college_id, college_name, is_evening_shift)
         self.__semester_num = semester_num
         
-    def add_subject(
+    async def add_subject(
         self,
         subject_name: str,
         subject_code: str,
@@ -357,7 +366,7 @@ class Result_DB(DB):
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
         """
 
-        existing_sub = self.__subject_collec.find_one({
+        existing_sub = await self.__subject_collec.find_one({
             "subject_id": subject_id,
             "subject_code": subject_code,
             "subject_name": subject_name
@@ -365,7 +374,7 @@ class Result_DB(DB):
 
         if not existing_sub:
             result_db_logger.info(f"Creating new subject {subject_id} - {subject_name}...")
-            subject_doc = self.__subject_collec.insert_one({
+            subject_doc = await self.__subject_collec.insert_one({
                 "subject_name": subject_name,
                     "subject_code": subject_code,
                     "subject_id": subject_id,

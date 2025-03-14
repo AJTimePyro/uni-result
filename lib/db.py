@@ -1,16 +1,21 @@
 import pymongo
+from motor.motor_asyncio import (
+    AsyncIOMotorClient,
+    AsyncIOMotorCollection,
+    AsyncIOMotorDatabase
+)
 from lib.env import ENV
 
-mongoClient = pymongo.MongoClient(ENV.MONGO_STR)
+mongoClient = AsyncIOMotorClient(ENV.MONGO_STR)
 mongoDatabase = mongoClient["uni_result"]
 
 class DB:
-    __db: pymongo.database.Database
-    _uni_collec: pymongo.collection.Collection
-    _batch_collec: pymongo.collection.Collection
-    _degree_collec: pymongo.collection.Collection
-    _college_collec: pymongo.collection.Collection
-    _subject_collec: pymongo.collection.Collection
+    __db: AsyncIOMotorDatabase
+    _uni_collec: AsyncIOMotorCollection
+    _batch_collec: AsyncIOMotorCollection
+    _degree_collec: AsyncIOMotorCollection
+    _college_collec: AsyncIOMotorCollection
+    _subject_collec: AsyncIOMotorCollection
 
     def __init__(self):
         self.__db = mongoDatabase
