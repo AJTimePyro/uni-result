@@ -6,11 +6,11 @@ mongoDatabase = mongoClient["uni_result"]
 
 class DB:
     __db: pymongo.database.Database
-    __uni_collec: pymongo.collection.Collection
-    __batch_collec: pymongo.collection.Collection
-    __degree_collec: pymongo.collection.Collection
-    __college_collec: pymongo.collection.Collection
-    __subject_collec: pymongo.collection.Collection
+    _uni_collec: pymongo.collection.Collection
+    _batch_collec: pymongo.collection.Collection
+    _degree_collec: pymongo.collection.Collection
+    _college_collec: pymongo.collection.Collection
+    _subject_collec: pymongo.collection.Collection
 
     def __init__(self):
         self.__db = mongoDatabase
