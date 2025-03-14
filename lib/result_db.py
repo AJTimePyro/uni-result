@@ -1,5 +1,7 @@
 import os
 import pymongo
+import pymongo.database
+import pymongo.collection
 import re
 import pandas as pd
 from lib.env import ENV
@@ -417,6 +419,7 @@ class Result_DB(DB):
             # Update existing file with new result
             updated_df = student_result_df.combine_first(existing_df)
             updated_df.fillna('', inplace = True)
+            updated_df.reset_index(inplace = True)
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
