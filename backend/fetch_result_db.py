@@ -1,5 +1,7 @@
 from lib.db import DB
-from bson import ObjectId
+from lib.customErrors import DocumentNotFound
+from bson import ObjectId, errors
+from backend.models import Batch
 
 class Fetch_Result_DB(DB):
     def __init__(self):
@@ -7,15 +9,20 @@ class Fetch_Result_DB(DB):
     
     async def get_batch(
         self,
-        university_id: str
-    ):
+        id: str
+    ) -> Batch | None:
         """
         It will get all the batches of a university
         """
 
-        univ = await self._uni_collec.find_one({
-            "_id": ObjectId(university_id)
+        if not ObjectId.is_valid(id):
+            raise errors.InvalidId()
+        
+        batch = await self._batch_collec.find_one({
+            "_id": ObjectId(id)
         })
-        return univ
-        # self._batch_collec.find()
+        if batch:
+            return Batch.from_mongo(batch)
+        else:
+            raise DocumentNotFound("Batch not found")
         
