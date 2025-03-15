@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from bson import ObjectId
+from typing import Optional
 
 class BaseResultModel(BaseModel):
     id: str
@@ -28,9 +29,9 @@ class BaseResultModel(BaseModel):
 class University(BaseResultModel):
     id: str
     name: str
-    batches: dict[str, str]
-    folder_id: str
     short_name: str
+    batches: Optional[dict[str, str]] = None
+    folder_id: Optional[str] = None
 
 class Batch(BaseResultModel):
     id: str
