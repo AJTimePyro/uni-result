@@ -273,11 +273,11 @@ class Result_DB(DB):
                     "_id": degree_doc_id,
                     "colleges": {
                         "$elemMatch": {
-                            f"{'M' if shift == 'E' else 'M'}.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
+                            f"shifts.{ 'M' if shift == 'E' else 'M' }.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
                         }
                     }}, {
                         "$set": {
-                            f"colleges.$.{shift}": [college_id, college_doc_id]  # Directly update the matched element
+                            f"colleges.$.shifts.{shift}": [college_id, college_doc_id]
                         }
                     }
                 )
@@ -288,7 +288,10 @@ class Result_DB(DB):
                 }, {
                     "$push": {
                         "colleges": {
-                            shift: [college_id, college_doc_id]
+                            "college_name": college_name,
+                            "shifts": {
+                                shift: [college_id, college_doc_id]
+                            }
                         }
                     }
                 })
