@@ -37,6 +37,8 @@ class Fetch_Result_DB(DB):
         
         uni = await self._uni_collec.find_one({
             "_id": ObjectId(id)
+        }, {
+            "folder_id": 0
         })
         if uni:
             return University.from_mongo(uni)
@@ -53,9 +55,30 @@ class Fetch_Result_DB(DB):
         
         batch = await self._batch_collec.find_one({
             "_id": ObjectId(id)
+        }, {
+            "folder_id": 0
         })
         if batch:
             return Batch.from_mongo(batch)
         else:
             raise DocumentNotFound("Batch not found")
+    
+    async def get_degree(self, id: str) -> Degree:
+        """
+        It will get degree by it's id
+        """
+
+        if not ObjectId.is_valid(id):
+            raise errors.InvalidId()
+        
+        degree = await self._degree_collec.find_one({
+            "_id": ObjectId(id)
+        }, {
+            "subjects" : 0,
+            "folder_id": 0
+        })
+        if degree:
+            return Degree.from_mongo(degree)
+        else:
+            raise DocumentNotFound("Degree not found")
         

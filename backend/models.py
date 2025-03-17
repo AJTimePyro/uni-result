@@ -38,7 +38,7 @@ class Batch(BaseResultModel):
     batch_num: int
     degrees: dict[str, str]
     university_id: str
-    folder_id: str
+    folder_id: Optional[str] = None
 
 class Degree(BaseResultModel):
     id: str
@@ -46,16 +46,16 @@ class Degree(BaseResultModel):
     degree_name: str
     branch_name: str
     colleges: list[dict[str, list[str]]]
-    subjects: dict[str, str]
+    subjects: Optional[dict[str, str]] = None
     batch_id: str
-    folder_id: str
+    folder_id: Optional[str] = None
 
 class College(BaseResultModel):
     id: str
     college_id: str
     college_name: str
     degree_id: str
-    folder_id: str
+    folder_id: Optional[str] = None
 
 class Subject(BaseResultModel):
     id: str
