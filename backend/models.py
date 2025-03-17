@@ -26,6 +26,10 @@ class BaseResultModel(BaseModel):
         document = convert_object_ids(document)
         return cls(**document)
 
+class BatchDegree(BaseModel):
+    degree_name: str
+    branches: list[dict[str, str]]
+
 class University(BaseResultModel):
     id: str
     name: str
@@ -36,7 +40,7 @@ class University(BaseResultModel):
 class Batch(BaseResultModel):
     id: str
     batch_num: int
-    degrees: dict[str, str]
+    degrees: Optional[list[BatchDegree]] = []
     university_id: str
     folder_id: Optional[str] = None
 

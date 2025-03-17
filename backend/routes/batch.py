@@ -22,6 +22,7 @@ async def get_batch(id: str):
             detail = "Invalid batch id"
         )
     except Exception as err:
+        print(err)
         raise HTTPException(
             status_code = 500,
             detail = "Something went wrong"

@@ -59,6 +59,8 @@ class Fetch_Result_DB(DB):
             "folder_id": 0
         })
         if batch:
+            degree_list = batch["degrees"]
+            batch["degrees"] = await self.__get_all_degrees(list(degree_list.values()))
             return Batch.from_mongo(batch)
         else:
             raise DocumentNotFound("Batch not found")
@@ -82,3 +84,28 @@ class Fetch_Result_DB(DB):
         else:
             raise DocumentNotFound("Degree not found")
         
+    async def __get_all_degrees(self, degree_id_list: list[str]) -> list[Degree]:
+        return await self._degree_collec.aggregate([{
+                "$match": {
+                    "_id": {"$in": degree_id_list}
+                }
+            }, {
+                "$group": {
+                    "_id": "$degree_name",
+                    "branches": {
+                        "$push": {
+                            "$arrayToObject": [[
+                                {"k": "$degree_id", "v": "$branch_name"}
+                            ]]
+                        }
+                    }
+                }
+            }, {
+                "$project": {
+                    "_id": 0,
+                    "degree_name": "$_id",
+                    "branches": 1
+                }
+            }
+        ]).to_list(length=None)
+    
