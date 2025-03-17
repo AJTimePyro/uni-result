@@ -22,6 +22,7 @@ async def get_degree(id: str):
             detail = "Invalid degree id"
         )
     except Exception as err:
+        print(err)
         raise HTTPException(
             status_code = 500,
             detail = "Something went wrong"

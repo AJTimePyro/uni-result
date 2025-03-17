@@ -49,7 +49,7 @@ class Degree(BaseResultModel):
     degree_id: str
     degree_name: str
     branch_name: str
-    colleges: list[dict[str, list[str]]]
+    colleges: list[dict[str, str | dict[str, list[str]]]]
     subjects: Optional[dict[str, str]] = None
     batch_id: str
     folder_id: Optional[str] = None
