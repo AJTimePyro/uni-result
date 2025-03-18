@@ -1,4 +1,5 @@
 import pymongo
+import asyncio
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
@@ -25,3 +26,11 @@ class DB:
         self._degree_collec = self.__db["degrees"]
         self._college_collec = self.__db["colleges"]
         self._subject_collec = self.__db["subjects"]
+
+        asyncio.run(self.__required_indexing())
+    
+    async def __required_indexing(self):
+        await self._subject_collec.create_index([
+                ("subject_id", 1), ("university_id", 1)
+            ], unique = True
+        )

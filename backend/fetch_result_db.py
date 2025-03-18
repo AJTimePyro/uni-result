@@ -83,7 +83,15 @@ class Fetch_Result_DB(DB):
             return Degree.from_mongo(degree)
         else:
             raise DocumentNotFound("Degree not found")
-        
+
+    async def get_all_sub_details(self, id_list: list[str]):
+        """
+        It will get all subjects details by it's ids
+        """
+
+        self._subject_collec.create_index()
+        pass
+
     async def __get_all_degrees(self, degree_id_list: list[str]) -> list[Degree]:
         return await self._degree_collec.aggregate([{
                 "$match": {

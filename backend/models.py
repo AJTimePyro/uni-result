@@ -50,7 +50,6 @@ class Degree(BaseResultModel):
     degree_name: str
     branch_name: str
     colleges: list[dict[str, str | list[int] | dict[str, list[str]]]]
-    subjects: Optional[dict[str, str]] = None
     batch_id: str
     folder_id: Optional[str] = None
 
@@ -70,6 +69,7 @@ class Subject(BaseResultModel):
     max_internal_marks: int
     max_external_marks: int
     passing_marks: int
+    university_id: str
 
 class ResultRequest(BaseModel):
     university_name: str

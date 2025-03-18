@@ -312,35 +312,35 @@ class Result_DB(DB):
         )
         return college_doc_id
 
-    async def __add_subjects_to_degree(
-        self,
-        degree_doc_id: str,
-        subject_ids: list[tuple[str, str]]
-    ):
-        """
-        It will add subjects to respected degree in a single batch update
-        """
+    # async def __add_subjects_to_degree(
+    #     self,
+    #     degree_doc_id: str,
+    #     subject_ids: list[tuple[str, str]]
+    # ):
+    #     """
+    #     It will add subjects to respected degree in a single batch update
+    #     """
 
-        # Create a dictionary of all subject updates
-        subject_updates = {
-            f"subjects.{subject_id}": subject_doc_id 
-            for subject_id, subject_doc_id in subject_ids
-        }
+    #     # Create a dictionary of all subject updates
+    #     subject_updates = {
+    #         f"subjects.{subject_id}": subject_doc_id 
+    #         for subject_id, subject_doc_id in subject_ids
+    #     }
         
-        updated_degree = await self.__degree_collec.update_one(
-            {
-                "_id": degree_doc_id
-            }, {
-                "$set": subject_updates
-            }
-        )
+    #     updated_degree = await self.__degree_collec.update_one(
+    #         {
+    #             "_id": degree_doc_id
+    #         }, {
+    #             "$set": subject_updates
+    #         }
+    #     )
 
-        if updated_degree.modified_count > 0:
-            result_db_logger.info(f"Subjects added to degree successfully")
+    #     if updated_degree.modified_count > 0:
+    #         result_db_logger.info(f"Subjects added to degree successfully")
 
     async def link_all_metadata(
         self,
-        subject_ids: list[tuple[str, str]],
+        # subject_ids: list[tuple[str, str]],
         degree_id: str,
         degree_name:str,
         batch: int,
@@ -350,12 +350,12 @@ class Result_DB(DB):
         is_evening_shift: bool = False
     ) -> str:
         """
-        It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist, and returns final folder path for uploading the result
+        It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist
         """
         
         batch_doc_id = await self.__create_new_batch(batch)
         degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
-        await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
+        # await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
         await self.__create_new_college(degree_doc_id, college_id, college_name, semester_num, is_evening_shift)
         self.__semester_num = semester_num
         
@@ -368,15 +368,14 @@ class Result_DB(DB):
         max_internal_marks: int,
         max_external_marks: int,
         passing_marks: int
-    ) -> tuple[str, str] | None:
+    ):
         """
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
         """
 
         existing_sub = await self.__subject_collec.find_one({
             "subject_id": subject_id,
-            "subject_code": subject_code,
-            "subject_name": subject_name
+            "university_id": self.__uni_document["_id"]
         })
 
         if not existing_sub:
@@ -388,14 +387,11 @@ class Result_DB(DB):
                     "subject_credit": subject_credit,
                     "max_internal_marks": max_internal_marks,
                     "max_external_marks": max_external_marks,
-                    "passing_marks": passing_marks
+                    "passing_marks": passing_marks,
+                    "university_id": self.__uni_document["_id"]
                 }
             )
             result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
-            return subject_id, subject_doc.inserted_id
-
-        else:
-            return None
     
     def store_and_upload_result(
         self,

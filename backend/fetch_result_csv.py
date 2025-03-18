@@ -1,5 +1,6 @@
 from lib.env import ENV
 import os
+import pandas as pd
 
 class Fetch_Result_CSV:
     __university_name: str
@@ -16,7 +17,7 @@ class Fetch_Result_CSV:
         degree_id: str,
         semester_num: int
     ):
-        self.__university_name = uni_name.upper()
+        self.__university_name = uni_name
         self.__batch_year = batch_year
         self.__degree_id = degree_id
         self.__semester_num = semester_num
@@ -26,8 +27,16 @@ class Fetch_Result_CSV:
         self.__reach_common_result_folder()
     
     def get_college_result(self, college_id: str):
-        result_file = self.__find_college_result_file()
-        
+        """
+        It will get result file of given college
+        """
+
+        # Getting result file
+        result_file = self.__find_college_result_file(college_id)
+        result_df = pd.read_csv(result_file)
+
+        # Getting subject ids
+        sub_id_list = self.__get_sub_id_list(result_df)
 
     def __find_college_result_file(self, college_id: str) -> str:
         """
@@ -65,7 +74,31 @@ class Fetch_Result_CSV:
             return None
 
     def __reach_common_result_folder(self):
-        self.__common_path = os.path.join(self.__result_path, self.__university_name, self.__batch_year)
+        """
+        It will reach the common result folder
+        """
+
+        self.__common_path = os.path.join(self.__result_path, self.__university_name, str(self.__batch_year))
         self.__common_path = self.__find_directory_startsWith(self.__common_path, self.__degree_id)
         if self.__common_path is None:
             raise FileNotFoundError(f"Folder with name starting with '{self.__degree_id}' not found in {self.__result_path}/{self.__university_name}/{self.__batch_year}")
+        
+    def __get_sub_id_list(self, result_csv: pd.DataFrame) -> list[str]:
+        """
+        Return the list of subject ids present in the given result column
+        """
+
+        sub_id_list = []
+        for column in result_csv.columns:
+            if column.startswith('sub_'):
+                sub_id_list.append(column.split('sub_')[-1])
+        return sub_id_list
+    
+    def __get_subject_data(self, sub_id_list: list[str]):
+        """
+        Return the subject data of given subject ids
+        """
+
+        # TODO
+        return
+
