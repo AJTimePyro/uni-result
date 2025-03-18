@@ -208,6 +208,7 @@ class Result_DB(DB):
         degree_doc_id: str,
         college_id: str,
         college_name: str,
+        semester_num: int,
         is_evening_shift: bool = False
     ) -> str:
         """
@@ -278,6 +279,8 @@ class Result_DB(DB):
                     }}, {
                         "$set": {
                             f"colleges.$.shifts.{shift}": [college_id, college_doc_id]
+                        }, "$addToSet": {
+                            "colleges.$.available_semester": semester_num
                         }
                     }
                 )
@@ -289,6 +292,7 @@ class Result_DB(DB):
                     "$push": {
                         "colleges": {
                             "college_name": college_name,
+                            "available_semester": [semester_num],
                             "shifts": {
                                 shift: [college_id, college_doc_id]
                             }
@@ -352,7 +356,7 @@ class Result_DB(DB):
         batch_doc_id = await self.__create_new_batch(batch)
         degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
         await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
-        await self.__create_new_college(degree_doc_id, college_id, college_name, is_evening_shift)
+        await self.__create_new_college(degree_doc_id, college_id, college_name, semester_num, is_evening_shift)
         self.__semester_num = semester_num
         
     async def add_subject(
