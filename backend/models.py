@@ -69,7 +69,7 @@ class Subject(BaseResultModel):
     max_internal_marks: int
     max_external_marks: int
     passing_marks: int
-    university_id: str
+    university_id: Optional[str] = None
 
 class ResultRequest(BaseModel):
     university_name: str

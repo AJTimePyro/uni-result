@@ -1,6 +1,7 @@
 from lib.env import ENV
 import os
 import pandas as pd
+from backend.fetch_result_db import Fetch_Result_DB
 
 class Fetch_Result_CSV:
     __university_name: str
@@ -26,7 +27,7 @@ class Fetch_Result_CSV:
         self.__common_path = ''
         self.__reach_common_result_folder()
     
-    def get_college_result(self, college_id: str):
+    async def get_college_result(self, college_id: str):
         """
         It will get result file of given college
         """
@@ -35,8 +36,9 @@ class Fetch_Result_CSV:
         result_file = self.__find_college_result_file(college_id)
         result_df = pd.read_csv(result_file)
 
-        # Getting subject ids
+        # Getting all required subject data
         sub_id_list = self.__get_sub_id_list(result_df)
+        subject_data_list = await self.__get_subject_data(sub_id_list)
 
     def __find_college_result_file(self, college_id: str) -> str:
         """
@@ -94,11 +96,10 @@ class Fetch_Result_CSV:
                 sub_id_list.append(column.split('sub_')[-1])
         return sub_id_list
     
-    def __get_subject_data(self, sub_id_list: list[str]):
+    async def __get_subject_data(self, sub_id_list: list[str]):
         """
         Return the subject data of given subject ids
         """
 
-        # TODO
-        return
-
+        fetch_db = Fetch_Result_DB()
+        return await fetch_db.get_all_sub_details_by_uni(sub_id_list, self.__university_name)

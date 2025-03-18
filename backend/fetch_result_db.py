@@ -84,13 +84,27 @@ class Fetch_Result_DB(DB):
         else:
             raise DocumentNotFound("Degree not found")
 
-    async def get_all_sub_details(self, id_list: list[str]):
+    async def get_all_sub_details_by_uni(
+        self,
+        id_list: list[str],
+        university_name: str
+    ) -> list[Subject]:
         """
         It will get all subjects details by it's ids
         """
 
-        self._subject_collec.create_index()
-        pass
+        university = await self.__get_university_by_name(university_name)
+        return [
+            Subject.from_mongo(subject)
+            async for subject in self._subject_collec.find({
+                "subject_id": {
+                    "$in": id_list
+                },
+                "university_id": ObjectId(university.id)
+            }, {
+                "university_id": 0
+            })
+        ]
 
     async def __get_all_degrees(self, degree_id_list: list[str]) -> list[Degree]:
         return await self._degree_collec.aggregate([{
@@ -117,3 +131,8 @@ class Fetch_Result_DB(DB):
             }
         ]).to_list(length=None)
     
+    async def __get_university_by_name(self, university_name: str) -> University:
+        university = await self._uni_collec.find_one({
+            "name": university_name
+        })
+        return University.from_mongo(university)
