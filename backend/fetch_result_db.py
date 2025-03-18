@@ -95,7 +95,7 @@ class Fetch_Result_DB(DB):
                     "branches": {
                         "$push": {
                             "$arrayToObject": [[
-                                {"k": "$degree_id", "v": "$branch_name"}
+                                {"k": "$branch_name", "v": "$_id"}
                             ]]
                         }
                     }
