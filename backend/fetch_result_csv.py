@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from backend.fetch_result_db import Fetch_Result_DB
 from bson import ObjectId
+from backend.models import Subject
 
 class Fetch_Result_CSV:
     __university_name: str
@@ -40,7 +41,8 @@ class Fetch_Result_CSV:
         # Getting all required subject data
         sub_id_list = self.__get_sub_id_list(result_df)
         subject_data_list = await self.__get_subject_data(sub_id_list, degree_doc_id)
-        print(subject_data_list)
+
+        await self.__calculate_cgpa_from_result(result_df, subject_data_list, sub_id_list)
 
     def __find_college_result_file(self, college_id: str) -> str:
         """
@@ -110,3 +112,35 @@ class Fetch_Result_CSV:
         sub_doc_id_list = [ObjectId(degree_doc.subjects[subject_id]) for subject_id in sub_id_list if subject_id in degree_doc.subjects]
 
         return await fetch_db.get_all_subjects_by_doc_id(sub_doc_id_list)
+    
+    async def __calculate_cgpa_from_result(
+        self,
+        result_df: pd.DataFrame,
+        subject_data_list: list[Subject],
+        sub_id_list_ordered: list[str]
+    ):
+        """
+        It will calculate CGPA from result dataframe
+        """
+
+        for index, row in result_df.iterrows():
+            cgpa = 0
+            total_credits = 0
+            for sub_index, marks in enumerate(row.values[2:]):
+                subject_data = subject_data_list[sub_index]
+                total_credits += subject_data.subject_credit
+                cgpa += self.__get_grade_point(sum(eval(marks))) * subject_data.subject_credit
+            cgpa /= total_credits
+            cgpa = round(cgpa, 2)
+            result_df.at[index, 'cgpa'] = cgpa
+        print(result_df)
+
+    def __get_grade_point(self, marks: int):
+        """
+        Return the grade point of given marks
+        """
+
+        return next((gp for threshold, gp in [
+            (90, 10), (75, 9), (65, 8), (55, 7), (50, 6), (45, 5), (40, 4)
+        ] if marks >= threshold), 0)    
+    
