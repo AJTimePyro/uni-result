@@ -153,6 +153,7 @@ class Result_DB(DB):
         degree_name, branch_name = divide_degree_and_branch(degree_name)
         degree_doc_id = ''
 
+        # For Folder Name
         if branch_name:
             degree_folder_name = f'{degree_id} - {degree_name} ({branch_name})'
         else:
@@ -162,7 +163,12 @@ class Result_DB(DB):
             "_id": batch_doc_id
         })
 
-        if batch_doc and degree_id in batch_doc["degrees"]:
+        if not batch_doc:
+            result_db_logger.error(f"Batch {batch_doc_id} not found")
+            raise Exception(f"Batch {batch_doc_id} not found")
+
+        # If degree already exist
+        if degree_id in batch_doc["degrees"]:
             degree_doc_id = batch_doc["degrees"][degree_id]
         else:
             result_db_logger.info(f"Creating new degree {degree_id} - {degree_name} {branch_name if branch_name else ''}...")
@@ -172,6 +178,7 @@ class Result_DB(DB):
                 "branch_name": branch_name,
                 "colleges": list(),
                 "subjects": dict(),
+                "batch_year": batch_doc["batch_num"],
                 "batch_id": batch_doc_id,
                 "folder_id": self.__gdrive.create_folder_inside_given_dir(
                     degree_folder_name,
@@ -312,35 +319,45 @@ class Result_DB(DB):
         )
         return college_doc_id
 
-    # async def __add_subjects_to_degree(
-    #     self,
-    #     degree_doc_id: str,
-    #     subject_ids: list[tuple[str, str]]
-    # ):
-    #     """
-    #     It will add subjects to respected degree in a single batch update
-    #     """
+    async def __add_subjects_to_degree(
+        self,
+        degree_doc_id: str,
+        subject_ids: list[tuple[str, str]]
+    ):
+        """
+        It will add subjects to respected degree in a single batch update
+        """
 
-    #     # Create a dictionary of all subject updates
-    #     subject_updates = {
-    #         f"subjects.{subject_id}": subject_doc_id 
-    #         for subject_id, subject_doc_id in subject_ids
-    #     }
+        # Getting existing degree to fetch subjects already added
+        existing_degree = await self.__degree_collec.find_one({
+            "_id": degree_doc_id
+        }, {
+            "subjects": 1
+        })
+
+        # Adding subjects which are not present in degree
+        new_subjects_to_add = {}
+        for subject_id, subject_doc_id in subject_ids:
+            if subject_id not in existing_degree["subjects"]:
+                new_subjects_to_add[f"subjects.{subject_id}"] = subject_doc_id
+            
+        if not new_subjects_to_add:
+            result_db_logger.info(f"Subjects already added to degree")
+            return
         
-    #     updated_degree = await self.__degree_collec.update_one(
-    #         {
-    #             "_id": degree_doc_id
-    #         }, {
-    #             "$set": subject_updates
-    #         }
-    #     )
-
-    #     if updated_degree.modified_count > 0:
-    #         result_db_logger.info(f"Subjects added to degree successfully")
+        updated_degree = await self.__degree_collec.update_one(
+            {
+                "_id": degree_doc_id
+            }, {
+                "$set": new_subjects_to_add
+            }
+        )
+        if updated_degree.modified_count > 0:
+            result_db_logger.info(f"Subjects added to degree successfully")
 
     async def link_all_metadata(
         self,
-        # subject_ids: list[tuple[str, str]],
+        subject_ids: list[tuple[str, str]],
         degree_id: str,
         degree_name:str,
         batch: int,
@@ -355,7 +372,7 @@ class Result_DB(DB):
         
         batch_doc_id = await self.__create_new_batch(batch)
         degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
-        # await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
+        await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
         await self.__create_new_college(degree_doc_id, college_id, college_name, semester_num, is_evening_shift)
         self.__semester_num = semester_num
         
@@ -392,6 +409,10 @@ class Result_DB(DB):
                 }
             )
             result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
+            return subject_id, subject_doc.inserted_id
+
+        else:
+            return subject_id, existing_sub["_id"]
     
     def store_and_upload_result(
         self,

@@ -188,7 +188,7 @@ class IPU_Result_Parser:
         subject_external_marks = self.__get_int_val(subject_detail.group(7))
         subject_passing_marks = self.__get_int_val(subject_detail.group(8))
 
-        await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
+        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
     
     async def __subjects_data_parser(self, raw_subjects_data: str):
         """
@@ -198,11 +198,9 @@ class IPU_Result_Parser:
         subject_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
             subject_res = await self.__subject_parser(raw_subject_data)
-            # subject_res = await self.__subject_parser(raw_subject_data)
-        #     if subject_res:
-        #         subject_id, subject_doc_id = subject_res
-        #         subject_list.append((subject_id, subject_doc_id))
-        # return subject_list
+            subject_id, subject_doc_id = subject_res
+            subject_list.append((subject_id, subject_doc_id))
+        return subject_list
     
     async def __start_subjects_parser(self, page_data: str):
         """
@@ -229,10 +227,9 @@ class IPU_Result_Parser:
             self.__skip_till_get_subjects_list()
             return
 
-        # subject_id_list = await self.__subjects_data_parser(subjects_raw_details)
-        await self.__subjects_data_parser(subjects_raw_details)
+        subject_id_list = await self.__subjects_data_parser(subjects_raw_details)
         await self.__res_db.link_all_metadata(
-            # subject_ids = subject_id_list,
+            subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
             degree_name = meta_data['degree_name'],
             batch = meta_data['batch'],
