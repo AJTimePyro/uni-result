@@ -65,7 +65,7 @@ class Fetch_Result_DB(DB):
         else:
             raise DocumentNotFound("Batch not found")
     
-    async def get_degree(self, id: str) -> Degree:
+    async def get_degree(self, id: str, return_subjects = False, return_colleges = False) -> Degree:
         """
         It will get degree by it's id
         """
@@ -73,37 +73,38 @@ class Fetch_Result_DB(DB):
         if not ObjectId.is_valid(id):
             raise errors.InvalidId()
         
-        degree = await self._degree_collec.find_one({
-            "_id": ObjectId(id)
-        }, {
-            "subjects" : 0,
+        projection = {
             "folder_id": 0
-        })
+        }
+        if not return_subjects:
+            projection["subjects"] = 0
+        if not return_colleges:
+            projection["colleges"] = 0
+        
+        degree = await self._degree_collec.find_one(
+            { "_id": ObjectId(id) },
+            projection
+        )
         if degree:
             return Degree.from_mongo(degree)
         else:
             raise DocumentNotFound("Degree not found")
 
-    async def get_all_sub_details_by_uni(
+    async def get_all_subjects_by_doc_id(
         self,
-        id_list: list[str],
-        university_name: str
+        doc_id_list: list[str]
     ) -> list[Subject]:
         """
         It will get all subjects details by it's ids
         """
 
-        university = await self.__get_university_by_name(university_name)
+        # university = await self.__get_university_by_name(university_name)
         return [
             Subject.from_mongo(subject)
-            async for subject in self._subject_collec.find({
-                "subject_id": {
-                    "$in": id_list
-                },
-                "university_id": ObjectId(university.id)
-            }, {
-                "university_id": 0
-            })
+            async for subject in self._subject_collec.find(
+                { "_id": { "$in": doc_id_list } },
+                { "university_id": 0 }
+            )
         ]
 
     async def __get_all_degrees(self, degree_id_list: list[str]) -> list[Degree]:
@@ -131,8 +132,8 @@ class Fetch_Result_DB(DB):
             }
         ]).to_list(length=None)
     
-    async def __get_university_by_name(self, university_name: str) -> University:
-        university = await self._uni_collec.find_one({
-            "name": university_name
-        })
-        return University.from_mongo(university)
+    # async def __get_university_by_name(self, university_name: str) -> University:
+    #     university = await self._uni_collec.find_one({
+    #         "name": university_name
+    #     })
+    #     return University.from_mongo(university)

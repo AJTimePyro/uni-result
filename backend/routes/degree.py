@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/")
 async def get_degree(id: str):
     try:
-        degree = await fetch_db.get_degree(id)
+        degree = await fetch_db.get_degree(id, return_colleges = True)
         if degree:
             return degree
     except DocumentNotFound as err:

@@ -2,6 +2,7 @@ from lib.env import ENV
 import os
 import pandas as pd
 from backend.fetch_result_db import Fetch_Result_DB
+from bson import ObjectId
 
 class Fetch_Result_CSV:
     __university_name: str
@@ -27,7 +28,7 @@ class Fetch_Result_CSV:
         self.__common_path = ''
         self.__reach_common_result_folder()
     
-    async def get_college_result(self, college_id: str):
+    async def get_college_result(self, college_id: str, degree_doc_id: str):
         """
         It will get result file of given college
         """
@@ -38,7 +39,8 @@ class Fetch_Result_CSV:
 
         # Getting all required subject data
         sub_id_list = self.__get_sub_id_list(result_df)
-        subject_data_list = await self.__get_subject_data(sub_id_list)
+        subject_data_list = await self.__get_subject_data(sub_id_list, degree_doc_id)
+        print(subject_data_list)
 
     def __find_college_result_file(self, college_id: str) -> str:
         """
@@ -96,10 +98,15 @@ class Fetch_Result_CSV:
                 sub_id_list.append(column.split('sub_')[-1])
         return sub_id_list
     
-    async def __get_subject_data(self, sub_id_list: list[str]):
+    async def __get_subject_data(self, sub_id_list: list[str], degree_doc_id: str):
         """
         Return the subject data of given subject ids
         """
 
         fetch_db = Fetch_Result_DB()
-        return await fetch_db.get_all_sub_details_by_uni(sub_id_list, self.__university_name)
+
+        # Getting subject doc ids
+        degree_doc = await fetch_db.get_degree(degree_doc_id, return_subjects = True)        
+        sub_doc_id_list = [ObjectId(degree_doc.subjects[subject_id]) for subject_id in sub_id_list if subject_id in degree_doc.subjects]
+
+        return await fetch_db.get_all_subjects_by_doc_id(sub_doc_id_list)
