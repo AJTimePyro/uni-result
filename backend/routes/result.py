@@ -12,7 +12,8 @@ async def get_result(result_request: ResultRequest):
         result_request.degree_id,
         result_request.semester_num
     )
-    await fetch_result_csv.get_college_result(result_request.college_id, result_request.degree_doc_id)
+    final_result_json, subject_data_list = await fetch_result_csv.get_college_result(result_request.college_id, result_request.degree_doc_id)
     return {
-        "Nothing" : "Lol"
+        "result" : final_result_json,
+        "subjects" : subject_data_list
     }

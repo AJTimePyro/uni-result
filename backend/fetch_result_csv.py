@@ -1,9 +1,22 @@
 from lib.env import ENV
 import os
 import pandas as pd
+import numpy as np
 from backend.fetch_result_db import Fetch_Result_DB
 from bson import ObjectId
 from backend.models import Subject
+from ast import literal_eval
+
+GRADE_RATING_GGSIPU = {
+    'O': 10,
+    'A+': 9,
+    'A': 8,
+    'B+': 7,
+    'B': 6,
+    'C': 5,
+    'P': 4,
+    'F': 0
+}
 
 class Fetch_Result_CSV:
     __university_name: str
@@ -42,7 +55,9 @@ class Fetch_Result_CSV:
         sub_id_list = self.__get_sub_id_list(result_df)
         subject_data_list = await self.__get_subject_data(sub_id_list, degree_doc_id)
 
-        await self.__calculate_cgpa_from_result(result_df, subject_data_list, sub_id_list)
+        final_result_json = await self.__calculate_cgpa_from_result(result_df, subject_data_list, sub_id_list)
+
+        return final_result_json, subject_data_list
 
     def __find_college_result_file(self, college_id: str) -> str:
         """
@@ -123,24 +138,41 @@ class Fetch_Result_CSV:
         It will calculate CGPA from result dataframe
         """
 
-        for index, row in result_df.iterrows():
-            cgpa = 0
-            total_credits = 0
-            for sub_index, marks in enumerate(row.values[2:]):
-                subject_data = subject_data_list[sub_index]
-                total_credits += subject_data.subject_credit
-                cgpa += self.__get_grade_point(sum(eval(marks))) * subject_data.subject_credit
-            cgpa /= total_credits
-            cgpa = round(cgpa, 2)
-            result_df.at[index, 'cgpa'] = cgpa
-        print(result_df)
+        def extract_grade_point(value):
+            if value:
+                try:
+                    return self.__get_grade_point(literal_eval(value)[2])
+                except:
+                    return np.nan
+            return np.nan
 
-    def __get_grade_point(self, marks: int):
+        # Getting all subject credits
+        subject_credits = np.array([sub.subject_credit for sub in subject_data_list])
+
+        # Apply extraction function to all subject columns
+        grade_points = result_df.iloc[:, 2:].apply(lambda col: col.map(extract_grade_point))
+
+        # Create a mask for valid grades
+        valid_mask = pd.notna(grade_points)
+
+        # Compute total credits dynamically per student
+        student_credits = np.where(valid_mask, subject_credits, 0).sum(axis=1)
+
+        # Compute weighted sum of grade points
+        weighted_grade_points = (grade_points * subject_credits).fillna(0).sum(axis=1)
+
+        # Calculate CGPA safely (avoiding division by zero)
+        result_df["cgpa"] = np.where(student_credits > 0, np.round(weighted_grade_points / student_credits, 2), 0)
+
+        # Fill missing values with empty string
+        result_df.fillna('', inplace = True)
+
+        return result_df.to_dict(orient="records")
+
+    def __get_grade_point(self, grade: str) -> int:
         """
         Return the grade point of given marks
         """
-
-        return next((gp for threshold, gp in [
-            (90, 10), (75, 9), (65, 8), (55, 7), (50, 6), (45, 5), (40, 4)
-        ] if marks >= threshold), 0)    
+        
+        return GRADE_RATING_GGSIPU[grade]
     

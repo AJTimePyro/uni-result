@@ -337,7 +337,7 @@ class IPU_Result_Parser:
         It will parse student marks like subject id, subject credit, internal marks, external marks, total marks and grade
         """
 
-        student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABFO]\+?)\))?', raw_student_score)
+        student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABCFPO]\+?)\))?', raw_student_score)
 
         subject_id = student_score_regex_match.group(1)
         subject_credit = self.__get_int_val(student_score_regex_match.group(2))
@@ -345,6 +345,8 @@ class IPU_Result_Parser:
         external_marks = self.__get_int_val(student_score_regex_match.group(4))
         total_marks = self.__get_int_val(student_score_regex_match.group(5))
         grade = student_score_regex_match.group(6)
+        if grade == None:
+            grade = 'F'
 
         # Adding student marks to list
-        self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks]
+        self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
