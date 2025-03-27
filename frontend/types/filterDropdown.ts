@@ -1,0 +1,1 @@
+type DropdownKey = 'sessionYear' | 'degree' | 'branch' | 'college' | 'shift' | 'semester';
