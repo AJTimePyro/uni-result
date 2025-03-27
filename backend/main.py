@@ -2,12 +2,22 @@ from fastapi import (
     FastAPI,
     APIRouter
 )
+from fastapi.middleware.cors import CORSMiddleware
 from backend.routes.batch import router as batch_router
 from backend.routes.university import router as university_router
 from backend.routes.degree import router as degree_router
 from backend.routes.result import router as result_router
 
+origins = ["http://localhost:3000"]
+
 app = FastAPI(root_path="/fastapi")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 api_router = APIRouter()
 
 # Register all routers here

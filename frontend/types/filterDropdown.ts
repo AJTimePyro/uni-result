@@ -1,1 +1,1 @@
-type DropdownKey = 'sessionYear' | 'degree' | 'branch' | 'college' | 'shift' | 'semester';
+type DropdownKey = 'Session Year' | 'Degree' | 'Branch' | 'College' | 'Shift' | 'Semester';

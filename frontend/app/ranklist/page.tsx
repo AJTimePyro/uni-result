@@ -1,19 +1,20 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import TopPerformers from '@/components/layouts/TopPerformers';
 import RanklistFilterDropdown from '@/components/ui/FilterDropdown';
 import RanklistTable from '@/components/ui/RanklistTable';
+import RankListFilters from '@/components/layouts/RankListFilters';
 
 interface Filters {
-    sessionYear: string;
-    degree: string;
-    branch: string;
-    college: string;
-    shift: string;
-    semester: string;
+    "Session Year": string;
+    "Degree": string;
+    "Branch": string;
+    "College": string;
+    "Shift": string;
+    "Semester": string;
 }
 
 const mockRanklistData = [
@@ -52,22 +53,22 @@ const mockRanklistData = [
 ];
 
 const dropdownOptions: Record<DropdownKey, string[]> = {
-    sessionYear: ['2021', '2022', '2023', '2024'],
-    degree: ['B.Tech', 'M.Tech', 'MBA', 'MCA'],
-    branch: ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical'],
-    college: ['Tech University', 'Engineering Institute', 'Innovation College'],
-    shift: ['Morning', 'Evening'],
-    semester: ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
+    "Session Year": ['2021', '2022', '2023', '2024'],
+    "Degree": ['B.Tech', 'M.Tech', 'MBA', 'MCA'],
+    "Branch": ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical'],
+    "College": ['Tech University', 'Engineering Institute', 'Innovation College'],
+    "Shift": ['Morning', 'Evening'],
+    "Semester": ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
 };
 
 const CosmicRanklistPage: React.FC = () => {
     const [filters, setFilters] = useState<Filters>({
-        sessionYear: '',
-        degree: '',
-        branch: '',
-        college: '',
-        shift: '',
-        semester: ''
+        "Session Year": '',
+        "Degree": '',
+        "Branch": '',
+        "College": '',
+        "Shift": '',
+        "Semester": ''
     });
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
@@ -120,6 +121,7 @@ const CosmicRanklistPage: React.FC = () => {
                         />
                     </div>
 
+                    <RankListFilters />
                     {(Object.keys(dropdownOptions) as DropdownKey[]).map((key) => (
                         <RanklistFilterDropdown
                             key={key}

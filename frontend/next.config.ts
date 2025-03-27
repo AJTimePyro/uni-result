@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async rewrites() {
+    return [{
+      source: "/fastapi/:path*",
+      destination: "http://localhost:8000/fastapi/:path*",
+    }]
+  },
 };
 
 export default nextConfig;
