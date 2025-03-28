@@ -4,18 +4,8 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import TopPerformers from '@/components/layouts/TopPerformers';
-import RanklistFilterDropdown from '@/components/ui/FilterDropdown';
 import RanklistTable from '@/components/ui/RanklistTable';
 import RankListFilters from '@/components/layouts/RankListFilters';
-
-interface Filters {
-    "Session Year": string;
-    "Degree": string;
-    "Branch": string;
-    "College": string;
-    "Shift": string;
-    "Semester": string;
-}
 
 const mockRanklistData = [
     {
@@ -52,26 +42,8 @@ const mockRanklistData = [
     }))
 ];
 
-const dropdownOptions: Record<DropdownKey, string[]> = {
-    "Session Year": ['2021', '2022', '2023', '2024'],
-    "Degree": ['B.Tech', 'M.Tech', 'MBA', 'MCA'],
-    "Branch": ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical'],
-    "College": ['Tech University', 'Engineering Institute', 'Innovation College'],
-    "Shift": ['Morning', 'Evening'],
-    "Semester": ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
-};
-
 const CosmicRanklistPage: React.FC = () => {
-    const [filters, setFilters] = useState<Filters>({
-        "Session Year": '',
-        "Degree": '',
-        "Branch": '',
-        "College": '',
-        "Shift": '',
-        "Semester": ''
-    });
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
 
     const filteredData = useMemo(() => {
         return mockRanklistData.filter(student =>
@@ -79,15 +51,6 @@ const CosmicRanklistPage: React.FC = () => {
             student.rollNumber.includes(searchQuery)
         );
     }, [searchQuery]);
-
-    const toggleDropdown = (key: DropdownKey) => {
-        setActiveDropdown(activeDropdown === key ? null : key);
-    };
-
-    const updateFilter = (key: DropdownKey, value: string) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-        setActiveDropdown(null);
-    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-black text-white p-6 md:p-12 relative overflow-hidden">
@@ -122,17 +85,6 @@ const CosmicRanklistPage: React.FC = () => {
                     </div>
 
                     <RankListFilters />
-                    {(Object.keys(dropdownOptions) as DropdownKey[]).map((key) => (
-                        <RanklistFilterDropdown
-                            key={key}
-                            label={key}
-                            options={dropdownOptions[key]}
-                            selectedValue={filters[key]}
-                            isActive={activeDropdown === key}
-                            toggleDropdown={toggleDropdown}
-                            onSelect={(value) => updateFilter(key, value)}
-                        />
-                    ))}
                 </div>
 
                 <RanklistTable students={filteredData} />

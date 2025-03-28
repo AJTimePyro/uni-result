@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { memo } from "react";
 
 interface RanklistFilterDropdownProps {
     options: string[];
@@ -56,4 +57,4 @@ const RanklistFilterDropdown: React.FC<RanklistFilterDropdownProps> = ({
     );
 };
 
-export default RanklistFilterDropdown;
+export default memo(RanklistFilterDropdown);

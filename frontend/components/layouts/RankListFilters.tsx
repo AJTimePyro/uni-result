@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import RanklistFilterDropdown from "../ui/FilterDropdown";
 import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchSessionYears } from "@/queries";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 
 interface CommonDropdownProps {
     isActive: boolean;
@@ -33,6 +33,18 @@ interface CollegeDropDownProps extends CommonDropdownProps {
     setSelectedCollege: Dispatch<SetStateAction<College>>;
 }
 
+interface ShiftDropDownProps extends CommonDropdownProps {
+    selectedCollege: College;
+    selectedCollegeShift: CollegeShift;
+    setSelectedCollegeShift: Dispatch<SetStateAction<CollegeShift>>;
+}
+
+interface SemesterDropDownProps extends CommonDropdownProps {
+    selectedCollege: College;
+    selectedSemester: number;
+    setSelectedSemester: Dispatch<SetStateAction<number>>;
+}
+
 const SessionYearDropDown = ({
     uniID,
     selectedSessionYear,
@@ -47,10 +59,10 @@ const SessionYearDropDown = ({
         enabled: !!uniID
     });
 
-    const handleSelect = (value: string) => {
+    const handleSelect = useCallback((value: string) => {
         setSelectedSessionYear({ year: value, id: data[value] });
         setActiveDropDown(null);
-    };
+    }, [setSelectedSessionYear, setActiveDropDown, data]);
 
     return (
         <RanklistFilterDropdown
@@ -78,10 +90,10 @@ const DegreeDropDown = ({
         enabled: !!batchID
     });
 
-    const handleSelect = (value: string) => {
+    const handleSelect = useCallback((value: string) => {
         setSelectedDegree({ degree_name: value, branches: data.find((d) => d.degree_name === value)?.branches || [] });
         setActiveDropDown(null);
-    };
+    }, [setSelectedDegree, setActiveDropDown, data]);
 
     return (
         <RanklistFilterDropdown
@@ -111,9 +123,9 @@ const BranchDropDown = ({
                 id: branchID
             });
         }
-    }, [selectedDegree.branches.length, setSelectedBranch]);
+    }, [selectedDegree.branches, setSelectedBranch]);
 
-    const handleSelect = (value: string) => {
+    const handleSelect = useCallback((value: string) => {
         const branchData = selectedDegree.branches.find(branch =>
             Object.keys(branch)[0] === value
         );
@@ -128,7 +140,7 @@ const BranchDropDown = ({
                 setActiveDropDown(null);
             }
         }
-    };
+    }, [selectedDegree.branches, selectedBranch.id, setSelectedBranch, setActiveDropDown]);
 
     const options = useMemo(() =>
         selectedDegree.branches.map((branch) => Object.keys(branch)[0]),
@@ -154,14 +166,14 @@ const CollegeDropDown = ({
     isActive,
     setActiveDropDown,
     toggleDropdown
-} : CollegeDropDownProps) => {
+}: CollegeDropDownProps) => {
     const { data = [] } = useQuery<College[]>({
         queryKey: QUERY_KEYS.colleges(degreeID),
         queryFn: () => fetchColleges(degreeID),
         enabled: !!degreeID
     });
 
-    const handleSelect = (value: string) => {
+    const handleSelect = useCallback((value: string) => {
         const clg = data.find(c => c.college_name === value)
         setSelectedCollege({
             college_name: clg?.college_name || "",
@@ -169,7 +181,7 @@ const CollegeDropDown = ({
             shifts: clg?.shifts || {}
         });
         setActiveDropDown(null);
-    }
+    }, [setSelectedCollege, setActiveDropDown, data]);
 
     return (
         <RanklistFilterDropdown
@@ -183,6 +195,88 @@ const CollegeDropDown = ({
     );
 }
 
+const ShiftDropDown = ({
+    selectedCollege,
+    selectedCollegeShift,
+    setSelectedCollegeShift,
+    isActive,
+    setActiveDropDown,
+    toggleDropdown
+}: ShiftDropDownProps) => {
+    useEffect(() => {
+        // XOR Operation but for high level datastructure
+        const { M, E } = selectedCollege.shifts;
+        if (!!M !== !!E) {
+            const clgShift = M || E;
+            setSelectedCollegeShift({
+                shift: M ? 'Morning' : 'Evening',
+                collegeID: clgShift![0],
+                id: clgShift![1]
+            })
+        }
+    }, [selectedCollege.shifts, setSelectedCollegeShift])
+
+    const handleSelect = useCallback((value: string) => {
+        if (["Morning", "Evening"].includes(value)) {
+            const clgShift = value === 'Morning' ? selectedCollege.shifts.M : selectedCollege.shifts.E;
+            setSelectedCollegeShift({
+                shift: value as CollegeShift['shift'],
+                collegeID: clgShift![0],
+                id: clgShift![1]
+            })
+            setActiveDropDown(null);
+        }
+    }, [selectedCollege.shifts, setSelectedCollegeShift, setActiveDropDown]);
+
+    const options = useMemo(() => {
+        const morning = selectedCollege.shifts.M ? ["Morning"] : [];
+        const evening = selectedCollege.shifts.E ? ["Evening"] : [];
+        return [...morning, ...evening];
+    }, [selectedCollege.shifts]);
+
+    return (
+        <RanklistFilterDropdown
+            options={options}
+            selectedValue={selectedCollegeShift.shift}
+            label="Shift"
+            onSelect={handleSelect}
+            isActive={isActive}
+            toggleDropdown={toggleDropdown}
+        />
+    )
+}
+
+const SemesterDropDown = ({
+    selectedCollege,
+    selectedSemester,
+    setSelectedSemester,
+    isActive,
+    setActiveDropDown,
+    toggleDropdown
+}: SemesterDropDownProps) => {
+    useEffect(() => {
+        if (selectedCollege.available_semester.length === 1) {
+            setSelectedSemester(selectedCollege.available_semester[0]);
+        }
+    }, [selectedCollege.available_semester.length]);
+
+    const handleSelect = useCallback((value: string) => {
+        setSelectedSemester(parseInt(value));
+        setActiveDropDown(null);
+    }, [setSelectedSemester, setActiveDropDown]);
+
+    return (
+        <RanklistFilterDropdown
+            options={selectedCollege.available_semester.map((s) => s.toString())}
+            selectedValue={selectedSemester === 0 ? "" : selectedSemester.toString()}
+            label="Semester"
+            onSelect={handleSelect}
+            isActive={isActive}
+            toggleDropdown={toggleDropdown}
+        />
+    )
+}
+
 export default function RankListFilters() {
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
     const [selectedSessionYear, setSelectedSessionYear] = useState<SessionYear>({ year: "", id: "" });
@@ -191,7 +285,9 @@ export default function RankListFilters() {
         branch_name: "",
         id: ""
     });
-    const [selectedCollege, setSelectedCollege] = useState<College>({ college_name: "", available_semester: [], shifts: { } });
+    const [selectedCollege, setSelectedCollege] = useState<College>({ college_name: "", available_semester: [], shifts: {} });
+    const [selectedCollegeShift, setSelectedCollegeShift] = useState<CollegeShift>({ shift: "", collegeID: "", id: "" });
+    const [selectedSemester, setSelectedSemester] = useState<number>(0);
 
     const toggleDropdown = (key: DropdownKey) => setActiveDropdown((prev) => (prev === key ? null : key));
 
@@ -214,7 +310,7 @@ export default function RankListFilters() {
                 setActiveDropDown={setActiveDropdown}
                 toggleDropdown={toggleDropdown}
             />
-            
+
             <BranchDropDown
                 selectedDegree={selectedDegree}
                 selectedBranch={selectedBranch}
@@ -229,6 +325,24 @@ export default function RankListFilters() {
                 selectedCollege={selectedCollege}
                 setSelectedCollege={setSelectedCollege}
                 isActive={activeDropdown === "College"}
+                setActiveDropDown={setActiveDropdown}
+                toggleDropdown={toggleDropdown}
+            />
+
+            <ShiftDropDown
+                selectedCollege={selectedCollege}
+                selectedCollegeShift={selectedCollegeShift}
+                setSelectedCollegeShift={setSelectedCollegeShift}
+                isActive={activeDropdown === "Shift"}
+                setActiveDropDown={setActiveDropdown}
+                toggleDropdown={toggleDropdown}
+            />
+
+            <SemesterDropDown
+                selectedCollege={selectedCollege}
+                selectedSemester={selectedSemester}
+                setSelectedSemester={setSelectedSemester}
+                isActive={activeDropdown === "Semester"}
                 setActiveDropDown={setActiveDropdown}
                 toggleDropdown={toggleDropdown}
             />

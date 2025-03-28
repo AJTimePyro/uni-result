@@ -27,3 +27,9 @@ type College = {
         E?: string[];    // two elements - [college id, college doc id]
     }
 }
+
+type CollegeShift = {
+    shift: "Morning" | "Evening" | "";
+    collegeID: string;  // Actual college id assigned by university
+    id: string; // College doc id assigned in database for indexing
+}
