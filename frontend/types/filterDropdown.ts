@@ -18,3 +18,12 @@ type Branch = {
     branch_name: string;
     id: string;
 }
+
+type College = {
+    college_name: string;
+    available_semester: number[];
+    shifts: {
+        M?: string[];    // two elements - [college id, college doc id]
+        E?: string[];    // two elements - [college id, college doc id]
+    }
+}

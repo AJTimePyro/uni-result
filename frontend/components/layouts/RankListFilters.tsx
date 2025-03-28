@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import RanklistFilterDropdown from "../ui/FilterDropdown";
-import { QUERY_KEYS, fetchDegrees, fetchSessionYears } from "@/queries";
+import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchSessionYears } from "@/queries";
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 
 interface CommonDropdownProps {
@@ -25,6 +25,12 @@ interface BranchDropDownProps extends CommonDropdownProps {
     selectedDegree: Degree;
     selectedBranch: Branch;
     setSelectedBranch: Dispatch<SetStateAction<Branch>>;
+}
+
+interface CollegeDropDownProps extends CommonDropdownProps {
+    degreeID: string;
+    selectedCollege: College;
+    setSelectedCollege: Dispatch<SetStateAction<College>>;
 }
 
 const SessionYearDropDown = ({
@@ -95,7 +101,7 @@ const BranchDropDown = ({
     setSelectedBranch,
     isActive,
     setActiveDropDown,
-    toggleDropdown,
+    toggleDropdown
 }: BranchDropDownProps) => {
     useEffect(() => {
         if (selectedDegree.branches.length === 1) {
@@ -141,6 +147,42 @@ const BranchDropDown = ({
     );
 };
 
+const CollegeDropDown = ({
+    degreeID,
+    selectedCollege,
+    setSelectedCollege,
+    isActive,
+    setActiveDropDown,
+    toggleDropdown
+} : CollegeDropDownProps) => {
+    const { data = [] } = useQuery<College[]>({
+        queryKey: QUERY_KEYS.colleges(degreeID),
+        queryFn: () => fetchColleges(degreeID),
+        enabled: !!degreeID
+    });
+
+    const handleSelect = (value: string) => {
+        const clg = data.find(c => c.college_name === value)
+        setSelectedCollege({
+            college_name: clg?.college_name || "",
+            available_semester: clg?.available_semester || [],
+            shifts: clg?.shifts || {}
+        });
+        setActiveDropDown(null);
+    }
+
+    return (
+        <RanklistFilterDropdown
+            options={data.map((c) => c.college_name)}
+            selectedValue={selectedCollege.college_name}
+            label="College"
+            onSelect={handleSelect}
+            isActive={isActive}
+            toggleDropdown={toggleDropdown}
+        />
+    );
+}
+
 export default function RankListFilters() {
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
     const [selectedSessionYear, setSelectedSessionYear] = useState<SessionYear>({ year: "", id: "" });
@@ -149,6 +191,7 @@ export default function RankListFilters() {
         branch_name: "",
         id: ""
     });
+    const [selectedCollege, setSelectedCollege] = useState<College>({ college_name: "", available_semester: [], shifts: { } });
 
     const toggleDropdown = (key: DropdownKey) => setActiveDropdown((prev) => (prev === key ? null : key));
 
@@ -177,6 +220,15 @@ export default function RankListFilters() {
                 selectedBranch={selectedBranch}
                 setSelectedBranch={setSelectedBranch}
                 isActive={activeDropdown === "Branch"}
+                setActiveDropDown={setActiveDropdown}
+                toggleDropdown={toggleDropdown}
+            />
+
+            <CollegeDropDown
+                degreeID={selectedBranch.id}
+                selectedCollege={selectedCollege}
+                setSelectedCollege={setSelectedCollege}
+                isActive={activeDropdown === "College"}
                 setActiveDropDown={setActiveDropdown}
                 toggleDropdown={toggleDropdown}
             />
