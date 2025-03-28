@@ -18,7 +18,7 @@ const RanklistFilterDropdown: React.FC<RanklistFilterDropdownProps> = ({
     isActive,
     toggleDropdown,
 }) => {
-    const isDisabled = options.length === 0;
+    const isDisabled = options.length === 0 || (options.length === 1 && !options[0]);
 
     return (
         <div className="relative">

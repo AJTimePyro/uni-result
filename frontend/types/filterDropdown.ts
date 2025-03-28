@@ -7,9 +7,14 @@ type SessionYear = {
     id: string;
 }
 
-type Branch = Record<string, string>;   // key: branch name, value: branch id
+type BranchRecord = Record<string, string>;   // key: branch name, value: branch id
 
 type Degree = {
     degree_name: string;
-    branches: Branch[];
+    branches: BranchRecord[];
+}
+
+type Branch = {
+    branch_name: string;
+    id: string;
 }
