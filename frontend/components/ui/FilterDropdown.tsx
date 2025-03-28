@@ -16,26 +16,26 @@ const RanklistFilterDropdown: React.FC<RanklistFilterDropdownProps> = ({
     label,
     onSelect,
     isActive,
-    toggleDropdown
+    toggleDropdown,
 }) => {
+    const isDisabled = options.length === 0;
+
     return (
         <div className="relative">
             <button
-                onClick={() => toggleDropdown(label)}
-                className={`w-full flex justify-between items-center 
-                px-4 py-3 rounded-lg 
-                ${isActive ? 'bg-indigo-800' : 'bg-indigo-900/50'}
-                hover:bg-indigo-800 transition
-                border border-indigo-700/50`}
+                onClick={() => !isDisabled && toggleDropdown(label)}
+                disabled={isDisabled}
+                className={`w-full flex justify-between items-center px-4 py-3 rounded-lg transition border border-indigo-700/50 
+                ${isDisabled ? "bg-gray-700 text-gray-400 cursor-not-allowed" : isActive ? "bg-indigo-800" : "bg-indigo-900/50 hover:bg-indigo-800"}`}
             >
                 {selectedValue || `Select ${label}`}
                 <ChevronDown
                     size={20}
-                    className={`transform transition-transform ${isActive ? 'rotate-180' : ''}`}
+                    className={`transform transition-transform ${isActive ? "rotate-180" : ""} ${isDisabled ? "opacity-50" : ""}`}
                 />
             </button>
 
-            {isActive && (
+            {isActive && !isDisabled && (
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
