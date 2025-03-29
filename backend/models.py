@@ -28,7 +28,7 @@ class BaseResultModel(BaseModel):
 
 class BatchDegree(BaseModel):
     degree_name: str
-    branches: list[dict[str, str]]
+    branches: list[dict[str, list[str]]]
 
 class University(BaseResultModel):
     id: str

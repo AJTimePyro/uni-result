@@ -7,7 +7,7 @@ type SessionYear = {
     id: string;
 }
 
-type BranchRecord = Record<string, string>;   // key: branch name, value: branch id
+type BranchRecord = Record<string, string[]>;   // key: branch name, value: branch id
 
 type Degree = {
     degree_name: string;
@@ -17,6 +17,7 @@ type Degree = {
 type Branch = {
     branch_name: string;
     id: string;
+    degreeID: string;
 }
 
 type College = {
@@ -32,4 +33,13 @@ type CollegeShift = {
     shift: "Morning" | "Evening" | "";
     collegeID: string;  // Actual college id assigned by university
     id: string; // College doc id assigned in database for indexing
+}
+
+type RankListRequestJSON = {
+    uniName: string;
+    batchYear: number;
+    degreeID: string;
+    collegeID: string;
+    semNum: number;
+    degreeDocID: string;
 }

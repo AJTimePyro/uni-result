@@ -3,7 +3,8 @@ import axios from "axios";
 export const QUERY_KEYS = {
     sessionYears: (uniID: string) => ["university-id", uniID],
     degrees: (batchID: string) => ["batch-id", batchID],
-    colleges: (degreeID: string) => ["degree-id", degreeID]
+    colleges: (degreeID: string) => ["degree-id", degreeID],
+    rankList: (rankListJson: RankListRequestJSON) => ["ranklist", rankListJson]
 }
 
 // All data fetch functions
@@ -12,8 +13,8 @@ export const fetchAllUniversities = async () => {
     return res.data;
 }
 
-export const fetchSessionYears = async (uniID: string) : Promise<Batches> => {
-    const res = await axios.get(`/fastapi/university?id=${uniID}`);
+export const fetchSessionYears = async (uniName: string) : Promise<Batches> => {
+    const res = await axios.get(`/fastapi/university?name=${uniName}`);
     return res.data.batches;
 }
 
@@ -27,7 +28,18 @@ export const fetchColleges = async (degreeID: string) : Promise<College[]> => {
     return res.data.colleges;
 }
 
-export const fetchResult = async (uniName: string, batchYear: number, degreeID: string, collegeID: string, semNum: number, degreeDocID: string) => {
+export const fetchRanklistResult = async ({
+    uniName,
+    batchYear,
+    degreeID,
+    collegeID,
+    semNum,
+    degreeDocID
+}: RankListRequestJSON) => {
+    if (!uniName || !batchYear || !degreeID || !collegeID || !semNum || !degreeDocID) {
+        return {};
+    }
+
     const res = await axios.post("/fastapi/result", {
         university_name: uniName,
         batch_year: batchYear,

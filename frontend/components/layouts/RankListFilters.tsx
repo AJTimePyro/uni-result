@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import RanklistFilterDropdown from "../ui/FilterDropdown";
-import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchSessionYears } from "@/queries";
+import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchRanklistResult, fetchSessionYears } from "@/queries";
 import { Dispatch, SetStateAction, memo, useCallback, useEffect, useMemo, useState } from "react";
 import CosmicButton from "../ui/CosmicButton";
 
@@ -98,7 +98,7 @@ const DegreeDropDown = memo(({
     dropdownKey,
 }: DegreeDropDownProps) => {
     const { data = [], isSuccess } = useQuery<Degree[]>({
-        queryKey: QUERY_KEYS.sessionYears(batchID),
+        queryKey: QUERY_KEYS.degrees(batchID),
         queryFn: () => fetchDegrees(batchID),
         enabled: !!batchID
     });
@@ -164,7 +164,8 @@ const BranchDropDown = memo(({
             const branchID = firstBranch[branchName];
             setSelectedBranch({
                 branch_name: branchName,
-                id: branchID
+                degreeID: branchID[0],
+                id: branchID[1]
             });
             return;
         }
@@ -180,11 +181,13 @@ const BranchDropDown = memo(({
             const branchID = branchData[branchName];
             setSelectedBranch({
                 branch_name: branchName,
-                id: branchID
+                degreeID: branchID[0],
+                id: branchID[1]
             });
         } else {
             setSelectedBranch({
                 branch_name: "",
+                degreeID: "",
                 id: ""
             });
         }
@@ -197,10 +200,11 @@ const BranchDropDown = memo(({
 
         if (branchData) {
             const [branchName, branchID] = Object.entries(branchData)[0];
-            if (branchID !== selectedBranch.id) {
+            if (branchID[0] !== selectedBranch.degreeID) {
                 setSelectedBranch({
                     branch_name: branchName,
-                    id: branchID
+                    degreeID: branchID[0],
+                    id: branchID[1]
                 });
                 setActiveDropDown(null);
             }
@@ -425,6 +429,7 @@ export default function RankListFilters() {
     const [selectedDegree, setSelectedDegree] = useState<Degree>({ degree_name: "", branches: [] });
     const [selectedBranch, setSelectedBranch] = useState<Branch>({
         branch_name: "",
+        degreeID: "",
         id: ""
     });
     const [selectedCollege, setSelectedCollege] = useState<College>({ college_name: "", available_semester: [], shifts: {} });
@@ -435,11 +440,26 @@ export default function RankListFilters() {
         setActiveDropdown(dropdown);
     }, []);
 
+    const buttonHandler = () => {
+        const requestJson : RankListRequestJSON = {
+            uniName: process.env.NEXT_PUBLIC_UNI_GGSIPU || '',
+            batchYear: parseInt(selectedSessionYear.year),
+            degreeID: selectedBranch.degreeID,
+            collegeID: selectedCollegeShift.collegeID,
+            semNum: selectedSemester,
+            degreeDocID: selectedCollegeShift.id
+        }
+        // const { data } = useQuery({
+        //     queryKey: QUERY_KEYS.rankList(requestJson),
+        //     queryFn: () => fetchRanklistResult(requestJson)
+        // })
+    }
+
     return (
         <section className="mx-auto container space-y-5">
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <SessionYearDropDown
-                    uniID={process.env.NEXT_PUBLIC_GGSIPU_ID || ''}
+                    uniID={process.env.NEXT_PUBLIC_UNI_GGSIPU || ''}
                     selectedSessionYear={selectedSessionYear}
                     setSelectedSessionYear={setSelectedSessionYear}
                     isActive={activeDropdown === "Session Year"}
@@ -494,7 +514,7 @@ export default function RankListFilters() {
             </section>
 
             <div className="flex justify-end">
-                <CosmicButton className="" text="Search Universe" onClick={() => { }} />
+                <CosmicButton className="" text="Search Universe" onClick={buttonHandler} />
             </div>
         </section>
     );

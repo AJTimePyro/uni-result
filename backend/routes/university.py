@@ -4,11 +4,20 @@ from . import fetch_db
 router = APIRouter()
 
 @router.get("/")
-async def get_university(id: str):
+async def get_university(id: str | None = None, name: str | None = None):
     try:
-        university = await fetch_db.get_university(id)
+        if id:
+            university = await fetch_db.get_university(id)
+        elif name:
+            university = await fetch_db.get_university_by_name(name)
+        else:
+            raise HTTPException(
+                status_code = 400,
+                detail="Either 'id' or 'name' is required"
+                )
         if university:
             return university
+        
     except DocumentNotFound as err:
         raise HTTPException(
             status_code = 404,

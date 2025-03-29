@@ -45,6 +45,9 @@ class Fetch_Result_DB(DB):
         else:
             raise DocumentNotFound("University not found")
     
+    async def get_university_by_name(self, name: str) -> University:
+        return await self.__get_university_by_name(name)
+
     async def get_batch(self, id: str) -> Batch:
         """
         It will get batch by it's id
@@ -118,7 +121,7 @@ class Fetch_Result_DB(DB):
                     "branches": {
                         "$push": {
                             "$arrayToObject": [[
-                                {"k": "$branch_name", "v": "$_id"}
+                                {"k": "$branch_name", "v": ["$degree_id", "$_id"]}
                             ]]
                         }
                     }
@@ -132,8 +135,13 @@ class Fetch_Result_DB(DB):
             }
         ]).to_list(length=None)
     
-    # async def __get_university_by_name(self, university_name: str) -> University:
-    #     university = await self._uni_collec.find_one({
-    #         "name": university_name
-    #     })
-    #     return University.from_mongo(university)
+    async def __get_university_by_name(self, university_name: str) -> University:
+        university = await self._uni_collec.find_one({
+            "name": university_name
+        }, {
+            "folder_id": 0
+        })
+        if university:
+            return University.from_mongo(university)
+        else:
+            raise DocumentNotFound("University not found")
