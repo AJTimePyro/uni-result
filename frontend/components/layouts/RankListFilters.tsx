@@ -48,6 +48,10 @@ interface SemesterDropDownProps extends CommonDropdownProps {
     setSelectedSemester: Dispatch<SetStateAction<number>>;
 }
 
+interface RankListFiltersProps {
+    callBackFetchResult: (requestJson: RankListRequestJSON) => void
+}
+
 const SessionYearDropDown = memo(({
     uniID,
     selectedSessionYear,
@@ -423,7 +427,7 @@ const SemesterDropDown = memo(({
     prevProps.isActive === nextProps.isActive
 );
 
-export default function RankListFilters() {
+export default function RankListFilters({ callBackFetchResult }: RankListFiltersProps) {
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
     const [selectedSessionYear, setSelectedSessionYear] = useState<SessionYear>({ year: "", id: "" });
     const [selectedDegree, setSelectedDegree] = useState<Degree>({ degree_name: "", branches: [] });
@@ -447,12 +451,9 @@ export default function RankListFilters() {
             degreeID: selectedBranch.degreeID,
             collegeID: selectedCollegeShift.collegeID,
             semNum: selectedSemester,
-            degreeDocID: selectedCollegeShift.id
+            degreeDocID: selectedBranch.id
         }
-        // const { data } = useQuery({
-        //     queryKey: QUERY_KEYS.rankList(requestJson),
-        //     queryFn: () => fetchRanklistResult(requestJson)
-        // })
+        callBackFetchResult(requestJson)
     }
 
     return (

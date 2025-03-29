@@ -49,7 +49,7 @@ class Fetch_Result_CSV:
 
         # Getting result file
         result_file = self.__find_college_result_file(college_id)
-        result_df = pd.read_csv(result_file)
+        result_df = pd.read_csv(result_file, dtype={"roll_num": str})
 
         # Getting all required subject data
         sub_id_list = self.__get_sub_id_list(result_df)
@@ -145,12 +145,22 @@ class Fetch_Result_CSV:
                 except:
                     return np.nan
             return np.nan
+        
+        def extract_total_marks(value):
+            if value:
+                try:
+                    marks = literal_eval(value)
+                    return marks[0] + marks[1]  # Internal + External
+                except:
+                    return 0
+            return 0
 
         # Getting all subject credits
         subject_credits = np.array([sub.subject_credit for sub in subject_data_list])
 
         # Apply extraction function to all subject columns
         grade_points = result_df.iloc[:, 2:].apply(lambda col: col.map(extract_grade_point))
+        total_marks = result_df.iloc[:, 2:].apply(lambda row: row.map(extract_total_marks), axis=1)
 
         # Create a mask for valid grades
         valid_mask = pd.notna(grade_points)
@@ -163,6 +173,19 @@ class Fetch_Result_CSV:
 
         # Calculate CGPA safely (avoiding division by zero)
         result_df["cgpa"] = np.where(student_credits > 0, np.round(weighted_grade_points / student_credits, 2), 0)
+
+        # Compute total and max marks
+        result_df["total_marks_scored"] = total_marks.sum(axis = 1)
+        result_df["max_marks_possible"] = (result_df.iloc[:, 2:] != "").sum(axis=1) * 100
+
+        # Sort by CGPA in descending order (highest first)
+        result_df.sort_values(by="cgpa", ascending=False, inplace=True)
+
+        # Reset index after sorting
+        result_df.reset_index(drop=True, inplace=True)
+
+        # Compute ranks using dense ranking
+        result_df["rank"] = result_df["cgpa"].rank(method="min", ascending=False).astype(int)
 
         # Fill missing values with empty string
         result_df.fillna('', inplace = True)
