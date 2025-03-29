@@ -18,21 +18,32 @@ const StudentHeader: React.FC<StudentHeaderProps> = ({ student }) => (
     </div>
 );
 
-const StudentAchievementCard: React.FC<StudentHeaderProps> = ({ student }) => (
-    <div className="bg-white/10 rounded-xl p-4 text-center">
-        <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-                <Star className="text-yellow-300" size={20} />
-                <span className="text-white">CGPA</span>
+const StudentAchievementCard: React.FC<StudentHeaderProps> = ({ student }) => {
+    const getConstellation = () => {
+        switch (student.rank) {
+            case 1: return "Orion";
+            case 2: return "Cassiopeia";
+            case 3: return "Ursa Major";
+            default: return null;
+        }
+    };
+
+    return (
+        <div className="bg-white/10 rounded-xl p-4 text-center">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                    <Star className="text-yellow-300" size={20} />
+                    <span className="text-white">CGPA</span>
+                </div>
+                <span className="text-lg font-bold text-white">{student.cgpa.toFixed(2)}</span>
             </div>
-            <span className="text-lg font-bold text-white">{student.cgpa.toFixed(2)}</span>
+
+            <div className="mt-2 text-sm text-indigo-300">
+                {getConstellation()} Constellation
+            </div>
         </div>
-        
-        <div className="mt-2 text-sm text-indigo-300">
-            {student.constellation} Constellation
-        </div>
-    </div>
-);
+    );
+}
 
 const TopPerformerCard: React.FC<TopPerformerCardProps> = ({ student, rank }) => {
     const getRankBadgeClass = (index: number): string => {

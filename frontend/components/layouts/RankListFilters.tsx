@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import RanklistFilterDropdown from "../ui/FilterDropdown";
 import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchSessionYears } from "@/queries";
 import { Dispatch, SetStateAction, memo, useCallback, useEffect, useMemo, useState } from "react";
+import CosmicButton from "../ui/CosmicButton";
 
 type DropdownKey = "Session Year" | "Degree" | "Branch" | "College" | "Shift" | "Semester";
 
@@ -82,8 +83,8 @@ const SessionYearDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    prevProps.uniID === nextProps.uniID && 
+}, (prevProps, nextProps) =>
+    prevProps.uniID === nextProps.uniID &&
     prevProps.selectedSessionYear.year === nextProps.selectedSessionYear.year &&
     prevProps.isActive === nextProps.isActive
 );
@@ -106,7 +107,7 @@ const DegreeDropDown = memo(({
 
     useEffect(() => {
         if (!selectedDegree.degree_name || !isSuccess) return;
-        
+
         const degree = data.find((d) => d.degree_name === selectedDegree.degree_name);
         if (degree) {
             setSelectedDegree(degree);
@@ -116,9 +117,9 @@ const DegreeDropDown = memo(({
     }, [batchID, data, isSuccess, selectedDegree.degree_name, setSelectedDegree]);
 
     const handleSelect = useCallback((value: string) => {
-        setSelectedDegree({ 
-            degree_name: value, 
-            branches: data.find((d) => d.degree_name === value)?.branches || [] 
+        setSelectedDegree({
+            degree_name: value,
+            branches: data.find((d) => d.degree_name === value)?.branches || []
         });
         setActiveDropDown(null);
     }, [data, setSelectedDegree, setActiveDropDown]);
@@ -137,8 +138,8 @@ const DegreeDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    prevProps.batchID === nextProps.batchID && 
+}, (prevProps, nextProps) =>
+    prevProps.batchID === nextProps.batchID &&
     prevProps.selectedDegree.degree_name === nextProps.selectedDegree.degree_name &&
     prevProps.isActive === nextProps.isActive
 );
@@ -169,7 +170,7 @@ const BranchDropDown = memo(({
         }
 
         if (!selectedBranch.branch_name) return;
-        
+
         const branchData = selectedDegree.branches.find(branch =>
             Object.keys(branch)[0] === selectedBranch.branch_name
         );
@@ -220,8 +221,8 @@ const BranchDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    prevProps.selectedDegree.branches === nextProps.selectedDegree.branches && 
+}, (prevProps, nextProps) =>
+    prevProps.selectedDegree.branches === nextProps.selectedDegree.branches &&
     prevProps.selectedBranch.branch_name === nextProps.selectedBranch.branch_name &&
     prevProps.isActive === nextProps.isActive
 );
@@ -240,14 +241,14 @@ const CollegeDropDown = memo(({
         enabled: !!degreeID
     });
 
-    const options = useMemo(() => 
-        data.map((c) => c.college_name), 
+    const options = useMemo(() =>
+        data.map((c) => c.college_name),
         [data]
     );
 
     useEffect(() => {
         if (!selectedCollege.college_name || !isSuccess) return;
-        
+
         const college = data.find((c) => c.college_name === selectedCollege.college_name);
         if (college) {
             setSelectedCollege(college);
@@ -280,8 +281,8 @@ const CollegeDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    prevProps.degreeID === nextProps.degreeID && 
+}, (prevProps, nextProps) =>
+    prevProps.degreeID === nextProps.degreeID &&
     prevProps.selectedCollege.college_name === nextProps.selectedCollege.college_name &&
     prevProps.isActive === nextProps.isActive
 );
@@ -311,9 +312,9 @@ const ShiftDropDown = memo(({
             });
             return;
         }
-        
+
         if (!selectedCollegeShift.id) return;
-        
+
         const clgShift = selectedCollege.shifts[selectedCollegeShift.shift === 'Morning' ? 'M' : 'E'];
         if (!clgShift) {
             setSelectedCollegeShift({
@@ -323,7 +324,7 @@ const ShiftDropDown = memo(({
             });
             return;
         }
-        
+
         if (clgShift[1] !== selectedCollegeShift.id) {
             setSelectedCollegeShift({
                 shift: selectedCollegeShift.shift,
@@ -337,7 +338,7 @@ const ShiftDropDown = memo(({
         if (["Morning", "Evening"].includes(value)) {
             const clgShift = value === 'Morning' ? selectedCollege.shifts.M : selectedCollege.shifts.E;
             if (!clgShift) return;
-            
+
             setSelectedCollegeShift({
                 shift: value as CollegeShift['shift'],
                 collegeID: clgShift[0],
@@ -361,8 +362,8 @@ const ShiftDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    JSON.stringify(prevProps.selectedCollege.shifts) === JSON.stringify(nextProps.selectedCollege.shifts) && 
+}, (prevProps, nextProps) =>
+    JSON.stringify(prevProps.selectedCollege.shifts) === JSON.stringify(nextProps.selectedCollege.shifts) &&
     prevProps.selectedCollegeShift.shift === nextProps.selectedCollegeShift.shift &&
     prevProps.isActive === nextProps.isActive
 );
@@ -375,7 +376,7 @@ const SemesterDropDown = memo(({
     setActiveDropDown,
     dropdownKey,
 }: SemesterDropDownProps) => {
-    const options = useMemo(() => 
+    const options = useMemo(() =>
         selectedCollege.available_semester.map((s) => s.toString()),
         [selectedCollege.available_semester]
     );
@@ -385,9 +386,9 @@ const SemesterDropDown = memo(({
             setSelectedSemester(selectedCollege.available_semester[0]);
             return;
         }
-        
+
         if (!selectedSemester) return;
-        
+
         if (!selectedCollege.available_semester.includes(selectedSemester)) {
             setSelectedSemester(0);
         }
@@ -412,8 +413,8 @@ const SemesterDropDown = memo(({
             toggleDropdown={toggleDropdown}
         />
     );
-}, (prevProps, nextProps) => 
-    JSON.stringify(prevProps.selectedCollege.available_semester) === JSON.stringify(nextProps.selectedCollege.available_semester) && 
+}, (prevProps, nextProps) =>
+    JSON.stringify(prevProps.selectedCollege.available_semester) === JSON.stringify(nextProps.selectedCollege.available_semester) &&
     prevProps.selectedSemester === nextProps.selectedSemester &&
     prevProps.isActive === nextProps.isActive
 );
@@ -435,60 +436,66 @@ export default function RankListFilters() {
     }, []);
 
     return (
-        <>
-            <SessionYearDropDown
-                uniID={process.env.NEXT_PUBLIC_GGSIPU_ID || ''}
-                selectedSessionYear={selectedSessionYear}
-                setSelectedSessionYear={setSelectedSessionYear}
-                isActive={activeDropdown === "Session Year"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="Session Year"
-            />
+        <section className="mx-auto container space-y-5">
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <SessionYearDropDown
+                    uniID={process.env.NEXT_PUBLIC_GGSIPU_ID || ''}
+                    selectedSessionYear={selectedSessionYear}
+                    setSelectedSessionYear={setSelectedSessionYear}
+                    isActive={activeDropdown === "Session Year"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="Session Year"
+                />
 
-            <DegreeDropDown
-                batchID={selectedSessionYear.id || ''}
-                selectedDegree={selectedDegree}
-                setSelectedDegree={setSelectedDegree}
-                isActive={activeDropdown === "Degree"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="Degree"
-            />
+                <DegreeDropDown
+                    batchID={selectedSessionYear.id || ''}
+                    selectedDegree={selectedDegree}
+                    setSelectedDegree={setSelectedDegree}
+                    isActive={activeDropdown === "Degree"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="Degree"
+                />
 
-            <BranchDropDown
-                selectedDegree={selectedDegree}
-                selectedBranch={selectedBranch}
-                setSelectedBranch={setSelectedBranch}
-                isActive={activeDropdown === "Branch"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="Branch"
-            />
+                <BranchDropDown
+                    selectedDegree={selectedDegree}
+                    selectedBranch={selectedBranch}
+                    setSelectedBranch={setSelectedBranch}
+                    isActive={activeDropdown === "Branch"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="Branch"
+                />
 
-            <CollegeDropDown
-                degreeID={selectedBranch.id}
-                selectedCollege={selectedCollege}
-                setSelectedCollege={setSelectedCollege}
-                isActive={activeDropdown === "College"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="College"
-            />
+                <CollegeDropDown
+                    degreeID={selectedBranch.id}
+                    selectedCollege={selectedCollege}
+                    setSelectedCollege={setSelectedCollege}
+                    isActive={activeDropdown === "College"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="College"
+                />
 
-            <ShiftDropDown
-                selectedCollege={selectedCollege}
-                selectedCollegeShift={selectedCollegeShift}
-                setSelectedCollegeShift={setSelectedCollegeShift}
-                isActive={activeDropdown === "Shift"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="Shift"
-            />
+                <ShiftDropDown
+                    selectedCollege={selectedCollege}
+                    selectedCollegeShift={selectedCollegeShift}
+                    setSelectedCollegeShift={setSelectedCollegeShift}
+                    isActive={activeDropdown === "Shift"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="Shift"
+                />
 
-            <SemesterDropDown
-                selectedCollege={selectedCollege}
-                selectedSemester={selectedSemester}
-                setSelectedSemester={setSelectedSemester}
-                isActive={activeDropdown === "Semester"}
-                setActiveDropDown={setActiveDropDown}
-                dropdownKey="Semester"
-            />
-        </>
+                <SemesterDropDown
+                    selectedCollege={selectedCollege}
+                    selectedSemester={selectedSemester}
+                    setSelectedSemester={setSelectedSemester}
+                    isActive={activeDropdown === "Semester"}
+                    setActiveDropDown={setActiveDropDown}
+                    dropdownKey="Semester"
+                />
+            </section>
+
+            <div className="flex justify-end">
+                <CosmicButton className="" text="Search Universe" onClick={() => { }} />
+            </div>
+        </section>
     );
 }

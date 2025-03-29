@@ -26,3 +26,16 @@ export const fetchColleges = async (degreeID: string) : Promise<College[]> => {
     const res = await axios.get(`/fastapi/degree?id=${degreeID}`);
     return res.data.colleges;
 }
+
+export const fetchResult = async (uniName: string, batchYear: number, degreeID: string, collegeID: string, semNum: number, degreeDocID: string) => {
+    const res = await axios.post("/fastapi/result", {
+        university_name: uniName,
+        batch_year: batchYear,
+        degree_id: degreeID,
+        college_id: collegeID,
+        semester_num: semNum,
+        degree_doc_id: degreeDocID
+    })
+    console.log(res.data)
+    return res.data
+}

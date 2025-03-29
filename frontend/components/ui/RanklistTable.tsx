@@ -20,8 +20,8 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                         <th className="p-4 text-left">Cosmic Rank</th>
                         <th className="p-4 text-left">Stellar Name</th>
                         <th className="p-4 text-left">Cosmic Identifier</th>
-                        <th className="p-4 text-left">Academic Orbit</th>
-                        <th className="p-4 text-right">Stellar Achievements</th>
+                        <th className="p-4 text-left">Marks</th>
+                        <th className="p-4 text-right">CGPA</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,7 +41,7 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                             </td>
                             <td className="p-4">{student.name}</td>
                             <td className="p-4">{student.rollNumber}</td>
-                            <td className="p-4">{student.branch}</td>
+                            <td className="p-4">{student.marks}</td>
                             <td className="p-4 text-right font-semibold">{student.cgpa.toFixed(2)}</td>
                         </tr>
                     ))}

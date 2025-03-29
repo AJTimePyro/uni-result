@@ -3,6 +3,5 @@ interface Student {
     name: string;
     rollNumber: string;
     cgpa: number;
-    branch: string;
-    constellation: string;
+    marks: string;
 }
