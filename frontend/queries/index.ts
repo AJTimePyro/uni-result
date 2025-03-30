@@ -48,6 +48,5 @@ export const fetchRanklistResult = async ({
         semester_num: semNum,
         degree_doc_id: degreeDocID
     })
-    console.log(res.data)
     return res.data
 }

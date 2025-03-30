@@ -27,7 +27,7 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                 <tbody>
                     {students.map((student) => (
                         <tr
-                            key={student.rollNumber}
+                            key={student.roll_num}
                             className="border-b border-indigo-700/30 hover:bg-indigo-900/20 transition"
                         >
                             <td className="p-4 font-semibold">
@@ -40,8 +40,8 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                                 )}
                             </td>
                             <td className="p-4">{student.name}</td>
-                            <td className="p-4">{student.rollNumber}</td>
-                            <td className="p-4">{student.marks}</td>
+                            <td className="p-4">{student.roll_num}</td>
+                            <td className="p-4">{`${student.total_marks_scored}/${student.max_marks_possible}`}</td>
                             <td className="p-4 text-right font-semibold">{student.cgpa.toFixed(2)}</td>
                         </tr>
                     ))}

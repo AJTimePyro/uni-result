@@ -9,7 +9,7 @@ const TopPerformers: React.FC<TopPerformersProps> = ({ topStudents }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {topStudents.map((student, index) => (
                 <TopPerformerCard 
-                    key={student.rollNumber} 
+                    key={student.roll_num} 
                     student={student} 
                     rank={index + 1} 
                 />

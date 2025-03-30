@@ -4,6 +4,7 @@ import { Loader2, Star, Telescope } from 'lucide-react';
 
 interface CosmicButtonProps {
     onClick: () => void;
+    disabled?: boolean;
     children?: React.ReactNode;
     loadingText?: string;
     className?: string;
@@ -11,7 +12,8 @@ interface CosmicButtonProps {
 
 const CosmicButton: React.FC<CosmicButtonProps> = ({
     onClick,
-    children,
+    disabled = false,
+    children = 'Cosmic Button',
     loadingText = 'Loading...',
     className = ''
 }) => {
@@ -36,9 +38,7 @@ const CosmicButton: React.FC<CosmicButtonProps> = ({
         try {
             onClick();
         } finally {
-            setTimeout(() => {
-                setIsLoading(false);
-            }, 2000);
+            setIsLoading(false);
         }
     };
 
@@ -48,8 +48,8 @@ const CosmicButton: React.FC<CosmicButtonProps> = ({
         <button
             ref={buttonRef}
             onClick={handleClick}
-            disabled={isLoading}
-            className={`relative group overflow-hidden px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-70 ${className}`}
+            disabled={isLoading || disabled}
+            className={`relative group cursor-pointer overflow-hidden px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-70 ${className}`}
             type="button"
             style={{ width: `${fixedWidth}px` }}
         >
@@ -64,7 +64,7 @@ const CosmicButton: React.FC<CosmicButtonProps> = ({
 
             <div className="relative flex items-center justify-center gap-2">
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                    {isLoading ? (
+                    {isLoading || disabled ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                         <Telescope className="w-5 h-5" />
@@ -72,7 +72,7 @@ const CosmicButton: React.FC<CosmicButtonProps> = ({
                 </div>
 
                 <span className="inline-block text-center w-full">
-                    {isLoading ? loadingText : buttonText}
+                    {isLoading || disabled ? loadingText : buttonText}
                 </span>
             </div>
 

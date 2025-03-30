@@ -14,7 +14,7 @@ interface StudentHeaderProps {
 const StudentHeader: React.FC<StudentHeaderProps> = ({ student }) => (
     <div className="text-center mb-4">
         <h3 className="text-xl font-bold text-white mb-1">{student.name}</h3>
-        <p className="text-sm text-indigo-200">{student.rollNumber}</p>
+        <p className="text-sm text-indigo-200">{student.roll_num}</p>
     </div>
 );
 

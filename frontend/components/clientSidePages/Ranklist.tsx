@@ -9,34 +9,38 @@ import RanklistTable from "../ui/RanklistTable";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS, fetchRanklistResult } from "@/queries";
 
-const mockRanklistData = [
+const mockRanklistData : Student[] = [
     {
         rank: 1,
         name: "Aisha Patel",
-        rollNumber: "2021CSE001",
+        roll_num: "2021CSE001",
         cgpa: 9.8,
-        marks: "1200/1500"
+        total_marks_scored: 1200,
+        max_marks_possible: 1500
     },
     {
         rank: 2,
         name: "Rohan Sharma",
-        rollNumber: "2021ECE005",
+        roll_num: "2021ECE005",
         cgpa: 9.6,
-        marks: "1200/1500"
+        total_marks_scored: 1200,
+        max_marks_possible: 1500
     },
     {
         rank: 3,
         name: "Priya Gupta",
-        rollNumber: "2021MECH010",
+        roll_num: "2021MECH010",
         cgpa: 9.5,
-        marks: "1200/1500"
+        total_marks_scored: 1200,
+        max_marks_possible: 1500
     },
     ...Array.from({ length: 47 }, (_, i) => ({
         rank: i + 4,
         name: `Student ${i + 4}`,
-        rollNumber: `2021XXX${String(i + 4).padStart(3, '0')}`,
+        roll_num: `2021XXX${String(i + 4).padStart(3, '0')}`,
         cgpa: 9.0 - (i * 0.1),
-        marks: `${1200 - (i * 50)}/1500`
+        total_marks_scored: 1200 - (i * 50),
+        max_marks_possible: 1500
     }))
 ];
 
@@ -50,8 +54,9 @@ export default function RankListClientSide() {
         semNum: 0,
         degreeDocID: ''
     });
+    const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
 
-    const { data, isFetching, refetch } = useQuery({
+    const { data, isSuccess, isFetching, refetch } = useQuery({
         queryKey: QUERY_KEYS.rankList(requestJson),
         queryFn: () => fetchRanklistResult(requestJson),
         enabled: false
@@ -61,15 +66,21 @@ export default function RankListClientSide() {
         console.log(isFetching)
     }, [isFetching])
 
+    useEffect(() => {
+        if (isSuccess) {
+            setRankListResult(data.result)
+        }
+    }, [isSuccess])
+
     const callBackFetchResult = (requestJson: RankListRequestJSON) => {
         setRequestJson(requestJson)
         refetch()
     }
 
     const filteredData = useMemo(() => {
-        return mockRanklistData.filter(student =>
+        return rankListResult.filter(student =>
             student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.rollNumber.includes(searchQuery)
+            student.roll_num.includes(searchQuery)
         );
     }, [searchQuery]);
 
@@ -88,7 +99,7 @@ export default function RankListClientSide() {
                 />
             </div>
 
-            <RankListFilters callBackFetchResult={callBackFetchResult} />
+            <RankListFilters isButtonLoading={isFetching} callBackFetchResult={callBackFetchResult} />
 
             <div>
                 <motion.h1
@@ -99,9 +110,9 @@ export default function RankListClientSide() {
                     Academic Cosmos Leaderboard
                 </motion.h1>
 
-                <TopPerformers topStudents={mockRanklistData.slice(0, 3)} />
+                <TopPerformers topStudents={rankListResult.slice(0, 3)} />
 
-                <RanklistTable students={filteredData} />
+                <RanklistTable students={rankListResult} />
             </div>
         </div>
     )

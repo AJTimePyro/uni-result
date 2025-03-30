@@ -49,6 +49,7 @@ interface SemesterDropDownProps extends CommonDropdownProps {
 }
 
 interface RankListFiltersProps {
+    isButtonLoading: boolean;
     callBackFetchResult: (requestJson: RankListRequestJSON) => void
 }
 
@@ -427,7 +428,7 @@ const SemesterDropDown = memo(({
     prevProps.isActive === nextProps.isActive
 );
 
-export default function RankListFilters({ callBackFetchResult }: RankListFiltersProps) {
+export default function RankListFilters({ isButtonLoading, callBackFetchResult }: RankListFiltersProps) {
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
     const [selectedSessionYear, setSelectedSessionYear] = useState<SessionYear>({ year: "", id: "" });
     const [selectedDegree, setSelectedDegree] = useState<Degree>({ degree_name: "", branches: [] });
@@ -515,7 +516,7 @@ export default function RankListFilters({ callBackFetchResult }: RankListFilters
             </section>
 
             <div className="flex justify-end">
-                <CosmicButton loadingText='Fetching...' onClick={buttonHandler}>
+                <CosmicButton disabled={isButtonLoading} loadingText='Fetching...' onClick={buttonHandler}>
                     Search
                 </CosmicButton>
             </div>

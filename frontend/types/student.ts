@@ -1,7 +1,9 @@
 interface Student {
-    rank: number;
     name: string;
-    rollNumber: string;
+    rank: number;
+    roll_num: string;
     cgpa: number;
-    marks: string;
+    max_marks_possible: number;
+    total_marks_scored: number;
+    [key: string]: number | string;
 }
