@@ -1,41 +1,84 @@
-import { motion } from 'framer-motion';
-import { Telescope } from 'lucide-react';
+'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { Loader2, Star, Telescope } from 'lucide-react';
 
-interface CosmicSearchButtonProps {
+interface CosmicButtonProps {
     onClick: () => void;
-    text: string;
+    children?: React.ReactNode;
+    loadingText?: string;
     className?: string;
 }
 
-const CosmicSearchButton = ({ onClick, text, className = '' }: CosmicSearchButtonProps) => {
+const CosmicButton: React.FC<CosmicButtonProps> = ({
+    onClick,
+    children,
+    loadingText = 'Loading...',
+    className = ''
+}) => {
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const loadingTextRef = useRef<HTMLSpanElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [fixedWidth, setFixedWidth] = useState<number>(0);
+
+    useEffect(() => {
+        if (textRef.current && loadingTextRef.current) {
+            const contentWidth = Math.max(
+                textRef.current.offsetWidth,
+                loadingTextRef.current.offsetWidth
+            );
+            setFixedWidth(contentWidth + 60); // Extra padding to account for button padding
+        }
+    }, [children, loadingText]);
+
+    const handleClick = () => {
+        setIsLoading(true);
+        try {
+            onClick();
+        } finally {
+            setTimeout(() => {
+                setIsLoading(false);
+            }, 2000);
+        }
+    };
+
+    const buttonText = children || 'Cosmic Button';
+
     return (
-        <motion.button
-            onClick={onClick}
-            className={`relative px-6 py-3 overflow-hidden font-medium rounded-lg text-white bg-indigo-900 group hover:cursor-pointer ${className}`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+        <button
+            ref={buttonRef}
+            onClick={handleClick}
+            disabled={isLoading}
+            className={`relative group overflow-hidden px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-70 ${className}`}
+            type="button"
+            style={{ width: `${fixedWidth}px` }}
         >
-            {/* Subtle cosmic background gradient */}
-            <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 opacity-80" />
-
-            {/* Stars effect (minimal for performance) */}
-            <span className="absolute top-1/4 left-1/4 w-1 h-1 rounded-full bg-white opacity-90" />
-            <span className="absolute top-3/4 left-1/3 w-1 h-1 rounded-full bg-white opacity-70" />
-            <span className="absolute top-2/4 right-1/4 w-1 h-1 rounded-full bg-white opacity-80" />
-
-            {/* Subtle glow effect */}
-            <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out rounded-lg opacity-0 bg-gradient-to-br from-blue-400 via-transparent to-transparent group-hover:opacity-20" />
-
-            {/* Text with space-themed search icon */}
-            <div className="flex items-center gap-2">
-                <Telescope className="stroke-white" />
-                <span className="text-white opacity-100 font-semibold">{text}</span>
+            <div className="absolute inset-0 w-full h-full">
+                <Star className="absolute text-white/20 w-4 h-4 animate-pulse" style={{ top: '20%', left: '10%' }} />
+                <Star className="absolute text-white/20 w-3 h-3 animate-pulse" style={{ top: '50%', left: '80%', animationDelay: '0.5s' }} />
+                <Star className="absolute text-white/20 w-2 h-2 animate-pulse" style={{ top: '70%', left: '30%', animationDelay: '1s' }} />
             </div>
-        </motion.button>
+
+            <span ref={textRef} className="absolute opacity-0 pointer-events-none">{buttonText}</span>
+            <span ref={loadingTextRef} className="absolute opacity-0 pointer-events-none">{loadingText}</span>
+
+            <div className="relative flex items-center justify-center gap-2">
+                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                    {isLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                        <Telescope className="w-5 h-5" />
+                    )}
+                </div>
+
+                <span className="inline-block text-center w-full">
+                    {isLoading ? loadingText : buttonText}
+                </span>
+            </div>
+
+            <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+        </button>
     );
 };
 
-export default CosmicSearchButton;
+export default CosmicButton;

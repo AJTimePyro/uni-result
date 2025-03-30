@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import RanklistFilterDropdown from "../ui/FilterDropdown";
-import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchRanklistResult, fetchSessionYears } from "@/queries";
+import { QUERY_KEYS, fetchColleges, fetchDegrees, fetchSessionYears } from "@/queries";
 import { Dispatch, SetStateAction, memo, useCallback, useEffect, useMemo, useState } from "react";
 import CosmicButton from "../ui/CosmicButton";
 
@@ -445,7 +445,7 @@ export default function RankListFilters({ callBackFetchResult }: RankListFilters
     }, []);
 
     const buttonHandler = () => {
-        const requestJson : RankListRequestJSON = {
+        const requestJson: RankListRequestJSON = {
             uniName: process.env.NEXT_PUBLIC_UNI_GGSIPU || '',
             batchYear: parseInt(selectedSessionYear.year),
             degreeID: selectedBranch.degreeID,
@@ -515,7 +515,9 @@ export default function RankListFilters({ callBackFetchResult }: RankListFilters
             </section>
 
             <div className="flex justify-end">
-                <CosmicButton className="" text="Search Universe" onClick={buttonHandler} />
+                <CosmicButton loadingText='Fetching...' onClick={buttonHandler}>
+                    Search
+                </CosmicButton>
             </div>
         </section>
     );
