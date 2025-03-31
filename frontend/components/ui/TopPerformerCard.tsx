@@ -35,7 +35,7 @@ const StudentAchievementCard: React.FC<StudentHeaderProps> = ({ student }) => {
                     <Star className="text-yellow-300" size={20} />
                     <span className="text-white">CGPA</span>
                 </div>
-                <span className="text-lg font-bold text-white">{student.cgpa.toFixed(2)}</span>
+                <span className="text-lg font-bold text-white">{student.cgpa}</span>
             </div>
 
             <div className="mt-2 text-sm text-indigo-300">

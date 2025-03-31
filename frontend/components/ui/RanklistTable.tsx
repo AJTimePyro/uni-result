@@ -42,7 +42,7 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                             <td className="p-4">{student.name}</td>
                             <td className="p-4">{student.roll_num}</td>
                             <td className="p-4">{`${student.total_marks_scored}/${student.max_marks_possible}`}</td>
-                            <td className="p-4 text-right font-semibold">{student.cgpa.toFixed(2)}</td>
+                            <td className="p-4 text-right font-semibold">{student.cgpa}</td>
                         </tr>
                     ))}
                 </tbody>
