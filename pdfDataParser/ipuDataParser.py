@@ -8,7 +8,11 @@ import re
 
 DEFAULT_STUDENT_RESULT = {
     'roll_num': '',
-    'name': ''
+    'name': '',
+    'college_id': '',
+    'total_marks_scored': 0,
+    'max_marks_possible': 0,
+    'cgpa': 0.00,
 }
 
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
@@ -195,6 +199,7 @@ class IPU_Result_Parser:
         It will divide subjects data into individual subject and then parse each subject
         """
 
+        self.__res_db.reset_subject_data_list()
         subject_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
             subject_res = await self.__subject_parser(raw_subject_data)

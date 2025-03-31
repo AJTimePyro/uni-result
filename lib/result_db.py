@@ -4,11 +4,25 @@ import pymongo.database
 import pymongo.collection
 import re
 import pandas as pd
+import numpy as np
 from lib.env import ENV
 from lib.utils import create_short_form_name
 from lib.gdrive import GDrive
 from lib.logger import result_db_logger
 from lib.db import DB
+from ast import literal_eval
+
+# GGSIPU grade rating
+GRADE_RATING_GGSIPU = {
+    'O': 10,
+    'A+': 9,
+    'A': 8,
+    'B+': 7,
+    'B': 6,
+    'C': 5,
+    'P': 4,
+    'F': 0
+}
 
 def divide_degree_and_branch(degreeName: str):
     """
@@ -44,6 +58,7 @@ class Result_DB(DB):
     __gdrive_upload_folder_id: str
     __semester_num: int
     __college_id: str
+    __subject_credits_dict: dict[str, int]
 
     def __init__(self, university_name: str = ''):
         super().__init__()
@@ -56,6 +71,7 @@ class Result_DB(DB):
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
+        self.__subject_credits_dict = {}
     
     @classmethod
     async def create(cls, university_name: str = ''):
@@ -371,17 +387,13 @@ class Result_DB(DB):
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
     
-    def __get_sub_id_list(self, result_csv: pd.DataFrame) -> list[str]:
+    def __get_grade_point(self, grade: str) -> int:
         """
-        Return the list of subject ids present in the given result column
+        Return the grade point of given marks
         """
+        
+        return GRADE_RATING_GGSIPU.get(str(g).strip(), np.nan)
 
-        sub_id_list = []
-        for column in result_csv.columns:
-            if column.startswith('sub_'):
-                sub_id_list.append(column.split('sub_')[-1])
-        return sub_id_list
-    
     def __calculate_cgpa(
         self,
         result_df: pd.DataFrame
@@ -390,62 +402,51 @@ class Result_DB(DB):
         It will calculate CGPA from result dataframe
         """
 
-        def extract_grade_point(value):
-            if value:
-                try:
-                    return self.__get_grade_point(literal_eval(value)[2])
-                except:
-                    return np.nan
-            return np.nan
-        
-        def extract_total_marks(value):
-            if value:
-                try:
-                    marks = literal_eval(value)
-                    return marks[0] + marks[1]  # Internal + External
-                except:
-                    return 0
-            return 0
-        
-        # Getting all subjects IDs
-        sub_id_list = self.__get_sub_id_list(result_df)
+        # Function to extract marks and grades
+        def extract_marks_and_grade(s):
+            try:
+                values = literal_eval(s)  # Convert string list to actual list
+                return np.sum(values[:-1]), values[-1]  # Sum of marks, last element is grade
+            except:
+                return np.nan, np.nan  # Handle missing or malformed data
 
-        # Getting all subject credits
-        subject_credits = np.array([sub.subject_credit for sub in subject_data_list])
+        # Identify relevant subject columns
+        subject_cols = [col for col in result_df.columns if col.startswith("sub_") and col.split('_')[-1] in self.__subject_credits_dict]
 
-        # Apply extraction function to all subject columns
-        grade_points = result_df.iloc[:, 2:].apply(lambda col: col.map(extract_grade_point))
-        total_marks = result_df.iloc[:, 2:].apply(lambda row: row.map(extract_total_marks), axis=1)
+        # Extract subject credits
+        credits = np.array([self.__subject_credits_dict[col.split('_')[-1]] for col in subject_cols])
 
-        # Create a mask for valid grades
-        valid_mask = pd.notna(grade_points)
+        # Apply extraction in bulk
+        marks_and_grades = result_df[subject_cols].map(extract_marks_and_grade)
+        marks_df = marks_and_grades.map(lambda x: x[0])  # Extract marks
+        grades_df = marks_and_grades.map(lambda x: x[1])  # Extract grades
 
-        # Compute total credits dynamically per student
-        student_credits = np.where(valid_mask, subject_credits, 0).sum(axis=1)
+        # Convert grades to grade points
+        grade_points_df = grades_df.map(lambda g: self.__get_grade_point(g))
+        grade_points_df = grade_points_df.astype(float)
 
-        # Compute weighted sum of grade points
-        weighted_grade_points = (grade_points * subject_credits).fillna(0).sum(axis=1)
+        # Compute total marks scored (skip NaN values)
+        result_df["total_marks_scored"] = marks_df.sum(axis=1, skipna=True)
 
-        # Calculate CGPA safely (avoiding division by zero)
-        result_df["cgpa"] = np.where(student_credits > 0, np.round(weighted_grade_points / student_credits, 2), 0)
+        # Compute maximum marks possible (100 per valid subject)
+        result_df["max_marks_possible"] = marks_df.notna().sum(axis=1) * 100
 
-        # Compute total and max marks
-        result_df["total_marks_scored"] = total_marks.sum(axis = 1)
-        result_df["max_marks_possible"] = (result_df.iloc[:, 2:] != "").sum(axis=1) * 100
+        # Compute weighted sum and total credits (vectorized)
+        weighted_sum = np.nansum(grade_points_df.values * credits, axis=1)
+        total_credits = np.nansum(~np.isnan(grade_points_df.values) * credits, axis=1)
 
-        # Sort by CGPA in descending order (highest first)
-        result_df.sort_values(by="cgpa", ascending=False, inplace=True)
+        # Prevent division by zero or NaN issues
+        total_credits = np.where(total_credits == 0, np.nan, total_credits)
 
-        # Reset index after sorting
-        result_df.reset_index(drop=True, inplace=True)
+        # Compute CGPA safely
+        result_df["cgpa"] = np.where(total_credits > 0, np.round(weighted_sum / total_credits, 2), np.nan)
+    
+    def reset_subject_data_list(self):
+        """
+        It will reset subject data list
+        """
 
-        # Compute ranks using dense ranking
-        result_df["rank"] = result_df["cgpa"].rank(method="min", ascending=False).astype(int)
-
-        # Fill missing values with empty string
-        result_df.fillna('', inplace = True)
-
-        return result_df.to_dict(orient="records")
+        self.__subject_credits_dict.clear()
 
     async def link_all_metadata(
         self,
@@ -484,29 +485,40 @@ class Result_DB(DB):
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
         """
 
-        existing_sub = await self.__subject_collec.find_one({
-            "subject_id": subject_id,
-            "university_id": self.__uni_document["_id"]
-        })
+        sub_data = await self.__subject_collec.find_one_and_update(
+            {
+                "subject_id": subject_id,
+                "university_id": self.__uni_document["_id"]
+            },  {
+                    "$setOnInsert": {
+                        "subject_name": subject_name,
+                        "subject_code": subject_code,
+                        "subject_id": subject_id,
+                        "subject_credit": subject_credit,
+                        "max_internal_marks": max_internal_marks,
+                        "max_external_marks": max_external_marks,
+                        "passing_marks": passing_marks,
+                        "university_id": self.__uni_document["_id"]
+                    }
+            }, upsert = True,
+            return_document = pymongo.ReturnDocument.BEFORE
+        )
 
-        if not existing_sub:
-            result_db_logger.info(f"Creating new subject {subject_id} - {subject_name}...")
-            subject_doc = await self.__subject_collec.insert_one({
-                "subject_name": subject_name,
-                    "subject_code": subject_code,
-                    "subject_id": subject_id,
-                    "subject_credit": subject_credit,
-                    "max_internal_marks": max_internal_marks,
-                    "max_external_marks": max_external_marks,
-                    "passing_marks": passing_marks,
-                    "university_id": self.__uni_document["_id"]
-                }
-            )
-            result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
-            return subject_id, subject_doc.inserted_id
+        # Storing subject credits to calulate CGPA in future
+        self.__subject_credits_dict[subject_id] = subject_credit
 
+        if sub_data:
+            return subject_id, sub_data["_id"]
         else:
-            return subject_id, existing_sub["_id"]
+            sub_data = await self.__subject_collec.find_one({
+                "subject_id": subject_id,
+                "university_id": self.__uni_document["_id"]
+            }, {
+                "_id" : 1
+            })
+            result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
+
+            return subject_id, sub_data["_id"]
     
     def store_and_upload_result(
         self,
@@ -524,15 +536,17 @@ class Result_DB(DB):
             filename
         )
 
-        # Convert results to dataframe and save as CSV
-        student_result_df = pd.DataFrame(student_result_list)
+        # Convert results to dataframe
+        student_result_df = pd.DataFrame(student_result_list, dtype=str)
+
+        # Add college id and also calculate cgpa
         student_result_df['college_id'] = self.__college_id
-        student_result_df.set_index('roll_num', inplace = True)
+        self.__calculate_cgpa(student_result_df)
 
         # If file doesn't exist, upload it
         if not os.path.exists(file_path):
             result_db_logger.info(f"Storing new result...")
-            student_result_df.to_csv(file_path, index = True)
+            student_result_df.to_csv(file_path, index = False)
             self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
             result_db_logger.info(f"Result stored and uploaded successfully")
 
@@ -542,12 +556,13 @@ class Result_DB(DB):
 
             # Read existing file
             existing_df = pd.read_csv(file_path)
-            existing_df.set_index('roll_num', inplace = True)
 
             # Update existing file with new result
-            updated_df = student_result_df.combine_first(existing_df)
-            updated_df.fillna('', inplace = True)
-            updated_df.reset_index(inplace = True)
+            updated_df = pd.concat(
+                [existing_df, student_result_df],
+                ignore_index = True,
+                join = "outer"
+            )
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
