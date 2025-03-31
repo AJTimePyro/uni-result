@@ -170,8 +170,27 @@ class Result_DB(DB):
         # If degree already exist
         if degree_id in batch_doc["degrees"]:
             degree_doc_id = batch_doc["degrees"][degree_id]
+            existing_degree = await self.__degree_collec.find_one({
+                "_id": degree_doc_id
+            }, {
+                "folder_id": 1
+            })
+
+            if existing_degree:
+                self.__gdrive_upload_folder_id = existing_degree["folder_id"]
+                result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} already exist")
+            else:
+                result_db_logger.error(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} not found in database which is linked with batch {batch_doc_id}")
+                raise Exception(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} not found in database which is linked with batch {batch_doc_id}")
+        
         else:
             result_db_logger.info(f"Creating new degree {degree_id} - {degree_name} {branch_name if branch_name else ''}...")
+
+            self.__gdrive_upload_folder_id = self.__gdrive.create_folder_inside_given_dir(
+                degree_folder_name,
+                batch_doc["folder_id"],
+                self.__final_folder_path_tracker
+            )
             new_degree = await self.__degree_collec.insert_one({
                 "degree_id": degree_id,
                 "degree_name": degree_name,
@@ -180,11 +199,7 @@ class Result_DB(DB):
                 "subjects": dict(),
                 "batch_year": batch_doc["batch_num"],
                 "batch_id": batch_doc_id,
-                "folder_id": self.__gdrive.create_folder_inside_given_dir(
-                    degree_folder_name,
-                    batch_doc["folder_id"],
-                    self.__final_folder_path_tracker
-                )
+                "folder_id": self.__gdrive_upload_folder_id
             })
             degree_doc_id = new_degree.inserted_id
             result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} created successfully")
@@ -222,7 +237,7 @@ class Result_DB(DB):
         It will create new college if not already exist, also link with respective degree and return college doc id
         """
 
-        college_folder_name = f'{college_id} - {college_name}'
+        # college_folder_name = f'{college_id} - {college_name}'
         college_doc_id = ''
         shift = 'M'
         updated_degree = None
@@ -246,9 +261,9 @@ class Result_DB(DB):
             college_doc = await self.__college_collec.find_one({
                 "_id": college_doc_id
             })
-            if college_doc:
-                self.__gdrive_upload_folder_id = college_doc["folder_id"]
-            else:
+            # if college_doc:
+            #     self.__gdrive_upload_folder_id = college_doc["folder_id"]
+            if not college_doc:
                 college_doc_id = None   
         
         # If not existing then create new college for particular id and shift
@@ -263,15 +278,15 @@ class Result_DB(DB):
                 "college_id": college_id,
                 "college_name": college_name,
                 "degree_id": degree_doc_id,
-                "folder_id": self.__gdrive.create_folder_inside_given_dir(
-                    college_folder_name,
-                    degree_doc["folder_id"],
-                    self.__final_folder_path_tracker
-                )
+                # "folder_id": self.__gdrive.create_folder_inside_given_dir(
+                #     college_folder_name,
+                #     degree_doc["folder_id"],
+                #     self.__final_folder_path_tracker
+                # )
             }
             new_college_doc = await self.__college_collec.insert_one(new_college_details)
             college_doc_id = new_college_doc.inserted_id
-            self.__gdrive_upload_folder_id = new_college_details["folder_id"]
+            # self.__gdrive_upload_folder_id = new_college_details["folder_id"]
             result_db_logger.info(f"College {college_id} - {college_name} created successfully")
 
             result_db_logger.info(f"Linking college({SHIFT_COLLEGE_MAP[shift]} shift) with degree...")
@@ -313,10 +328,10 @@ class Result_DB(DB):
                 result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree, {updated_degree}")
                 raise Exception(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
             
-        self.__final_folder_path_tracker = os.path.join(
-            self.__final_folder_path_tracker,
-            college_folder_name
-        )
+        # self.__final_folder_path_tracker = os.path.join(
+        #     self.__final_folder_path_tracker,
+        #     college_folder_name
+        # )
         return college_doc_id
 
     async def __add_subjects_to_degree(
