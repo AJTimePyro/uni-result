@@ -43,6 +43,7 @@ class Result_DB(DB):
     __final_folder_path_tracker: str
     __gdrive_upload_folder_id: str
     __semester_num: int
+    __college_id: str
 
     def __init__(self, university_name: str = ''):
         super().__init__()
@@ -369,6 +370,82 @@ class Result_DB(DB):
         )
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
+    
+    def __get_sub_id_list(self, result_csv: pd.DataFrame) -> list[str]:
+        """
+        Return the list of subject ids present in the given result column
+        """
+
+        sub_id_list = []
+        for column in result_csv.columns:
+            if column.startswith('sub_'):
+                sub_id_list.append(column.split('sub_')[-1])
+        return sub_id_list
+    
+    def __calculate_cgpa(
+        self,
+        result_df: pd.DataFrame
+    ):
+        """
+        It will calculate CGPA from result dataframe
+        """
+
+        def extract_grade_point(value):
+            if value:
+                try:
+                    return self.__get_grade_point(literal_eval(value)[2])
+                except:
+                    return np.nan
+            return np.nan
+        
+        def extract_total_marks(value):
+            if value:
+                try:
+                    marks = literal_eval(value)
+                    return marks[0] + marks[1]  # Internal + External
+                except:
+                    return 0
+            return 0
+        
+        # Getting all subjects IDs
+        sub_id_list = self.__get_sub_id_list(result_df)
+
+        # Getting all subject credits
+        subject_credits = np.array([sub.subject_credit for sub in subject_data_list])
+
+        # Apply extraction function to all subject columns
+        grade_points = result_df.iloc[:, 2:].apply(lambda col: col.map(extract_grade_point))
+        total_marks = result_df.iloc[:, 2:].apply(lambda row: row.map(extract_total_marks), axis=1)
+
+        # Create a mask for valid grades
+        valid_mask = pd.notna(grade_points)
+
+        # Compute total credits dynamically per student
+        student_credits = np.where(valid_mask, subject_credits, 0).sum(axis=1)
+
+        # Compute weighted sum of grade points
+        weighted_grade_points = (grade_points * subject_credits).fillna(0).sum(axis=1)
+
+        # Calculate CGPA safely (avoiding division by zero)
+        result_df["cgpa"] = np.where(student_credits > 0, np.round(weighted_grade_points / student_credits, 2), 0)
+
+        # Compute total and max marks
+        result_df["total_marks_scored"] = total_marks.sum(axis = 1)
+        result_df["max_marks_possible"] = (result_df.iloc[:, 2:] != "").sum(axis=1) * 100
+
+        # Sort by CGPA in descending order (highest first)
+        result_df.sort_values(by="cgpa", ascending=False, inplace=True)
+
+        # Reset index after sorting
+        result_df.reset_index(drop=True, inplace=True)
+
+        # Compute ranks using dense ranking
+        result_df["rank"] = result_df["cgpa"].rank(method="min", ascending=False).astype(int)
+
+        # Fill missing values with empty string
+        result_df.fillna('', inplace = True)
+
+        return result_df.to_dict(orient="records")
 
     async def link_all_metadata(
         self,
@@ -384,6 +461,8 @@ class Result_DB(DB):
         """
         It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist
         """
+
+        self.__college_id = college_id  # For data storing and uploading in future
         
         batch_doc_id = await self.__create_new_batch(batch)
         degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
@@ -447,6 +526,7 @@ class Result_DB(DB):
 
         # Convert results to dataframe and save as CSV
         student_result_df = pd.DataFrame(student_result_list)
+        student_result_df['college_id'] = self.__college_id
         student_result_df.set_index('roll_num', inplace = True)
 
         # If file doesn't exist, upload it
