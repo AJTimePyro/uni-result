@@ -392,7 +392,7 @@ class Result_DB(DB):
         Return the grade point of given marks
         """
         
-        return GRADE_RATING_GGSIPU.get(str(g).strip(), np.nan)
+        return GRADE_RATING_GGSIPU.get(str(grade).strip(), np.nan)
 
     def __calculate_cgpa(
         self,
