@@ -52,6 +52,7 @@ class Result_DB(DB):
     __degree_collec: pymongo.collection.Collection
     __college_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
+    __hall_of_fame_collec: pymongo.collection.Collection
     __uni_document: dict
     __gdrive: GDrive
     __final_folder_path_tracker: str
@@ -68,6 +69,7 @@ class Result_DB(DB):
         self.__degree_collec = self._degree_collec
         self.__college_collec = self._college_collec
         self.__subject_collec = self._subject_collec
+        self.__hall_of_fame_collec = self._hall_of_fame_collec
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
@@ -572,3 +574,28 @@ class Result_DB(DB):
             result_db_logger.info(f"Result updated and uploaded successfully")
         
         self.__final_folder_path_tracker = self.__uni_document["name"]
+    
+    async def add_hall_of_fame_student(
+        self,
+        roll_num: str,
+        name: str,
+        university_name: str,
+        batch: int,
+        college_name: str,
+        college_id: str,
+        semester_num: int
+    ):
+        """
+        It will add student to hall of fame, those who achieved 10cgpa
+        """
+
+        result_db_logger.info(f"Adding student {roll_num} - {name} to hall of fame...")
+        await self.__hall_of_fame_collec.insert_one({
+            "roll_num": roll_num,
+            "name": name,
+            "university_name": university_name,
+            "batch": batch,
+            "college_name": college_name,
+            "college_id": college_id,
+            "semester_num": semester_num
+        })

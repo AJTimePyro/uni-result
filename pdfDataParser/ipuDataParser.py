@@ -71,7 +71,7 @@ class IPU_Result_Parser:
 
                 await self.__start_subjects_parser(next_page)
             else:
-                self.__start_student_results_parser(next_page)
+                await self.__start_student_results_parser(next_page)
     
     def __storing_result(self):
         if len(self.__students_result_list) == 0:
@@ -231,6 +231,8 @@ class IPU_Result_Parser:
             parser_logger.warning(err.message + " ,Skipping pages till finding new subject list...")
             self.__skip_till_get_subjects_list()
             return
+        
+        self.__tmp_meta_data = meta_data
 
         subject_id_list = await self.__subjects_data_parser(subjects_raw_details)
         await self.__res_db.link_all_metadata(
@@ -246,7 +248,7 @@ class IPU_Result_Parser:
         parser_logger.info("Subject list parsed successfully")
         parser_logger.info("Now parsing student results...")
     
-    def __start_student_results_parser(self, page_data: str):
+    async def __start_student_results_parser(self, page_data: str):
         """
         This will remove header from page data and then starts parsing
         """
@@ -260,7 +262,7 @@ class IPU_Result_Parser:
         for student_raw_result in students_raw_result_list:
             self.__students_result_list.append(DEFAULT_STUDENT_RESULT.copy())
             self.__students_result_index += 1
-            self.__extract_student_result(student_raw_result)
+            await self.__extract_student_result(student_raw_result)
     
     def __get_students_raw_result_list(self, raw_result: str) -> list[str]:
         """
@@ -280,7 +282,7 @@ class IPU_Result_Parser:
         result_list.append(raw_result[start_index: ])
         return result_list
     
-    def __extract_student_result(self, raw_student_data: str):
+    async def __extract_student_result(self, raw_student_data: str):
         """
         It will divide student result into student detail and student marks, and then parse them individually
         """
@@ -292,7 +294,7 @@ class IPU_Result_Parser:
         student_marks = raw_student_data[result_start_index:].strip()
 
         self.__extract_student_detail(student_detail)
-        self.__extract_student_marks(student_marks)
+        await self.__extract_student_marks(student_marks)
     
     def __extract_student_detail(self, raw_student_detail: str):
         """
@@ -309,15 +311,35 @@ class IPU_Result_Parser:
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
         self.__students_result_list[self.__students_result_index]['name'] = student_name
 
-    def __extract_student_marks(self, raw_student_marks: str):
+    async def __extract_student_marks(self, raw_student_marks: str):
         """
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
         student_mark_list = self.__get_student_marks_list(raw_student_marks)
+        student_grade_list = []
 
         for student_mark in student_mark_list:
-            self.__extract_student_score(student_mark)
+            grade = self.__extract_student_score(student_mark)
+            student_grade_list.append(grade)
+        
+        if all(grade == 'O' for grade in student_grade_list):
+            parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
+
+            try:
+                # Adding student to hall of fame
+                await self.__res_db.add_hall_of_fame_student(
+                    self.__students_result_list[self.__students_result_index]['roll_num'],
+                    self.__students_result_list[self.__students_result_index]['name'],
+                    UNIVERSITY_NAME,
+                    self.__tmp_meta_data['batch'],
+                    self.__tmp_meta_data['college_name'],
+                    self.__tmp_meta_data['college_code'],
+                    self.__tmp_meta_data['semester_num']
+                )
+            except Exception as err:
+                parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
+                parser_logger.error(err)
     
     def __get_student_marks_list(self, raw_student_marks: str) -> list[str]:
         """
@@ -337,9 +359,9 @@ class IPU_Result_Parser:
         student_mark_list.append(raw_student_marks[end_index: ].strip())
         return student_mark_list
     
-    def __extract_student_score(self, raw_student_score: str):
+    def __extract_student_score(self, raw_student_score: str) -> str:
         """
-        It will parse student marks like subject id, subject credit, internal marks, external marks, total marks and grade
+        It will parse student marks like subject id, subject credit, internal marks, external marks, total marks and grade. Also it returns grade
         """
 
         student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABCFPO]\+?)\))?', raw_student_score)
@@ -355,3 +377,5 @@ class IPU_Result_Parser:
 
         # Adding student marks to list
         self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
+
+        return grade

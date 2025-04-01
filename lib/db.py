@@ -26,6 +26,7 @@ class DB:
         self._degree_collec = self.__db["degrees"]
         self._college_collec = self.__db["colleges"]
         self._subject_collec = self.__db["subjects"]
+        self._hall_of_fame_collec = self.__db["hall_of_fame"]
 
     #     asyncio.create_task(self.__required_indexing())
     
