@@ -538,6 +538,8 @@ class Result_DB(DB):
 
         # Convert results to dataframe
         student_result_df = pd.DataFrame(student_result_list, dtype=str)
+        student_result_df['college_id'] = ''
+        student_result_df = student_result_df.astype({"roll_num": "string", "college_id": "string"})
 
         # Add college id and also calculate cgpa
         student_result_df['college_id'] = self.__college_id
@@ -555,7 +557,7 @@ class Result_DB(DB):
             result_db_logger.info(f"Updating existing result...")
 
             # Read existing file
-            existing_df = pd.read_csv(file_path)
+            existing_df = pd.read_csv(file_path, dtype={"roll_num": "string", "college_id": "string"})
 
             # Update existing file with new result
             updated_df = pd.concat(
