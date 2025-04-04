@@ -61,6 +61,7 @@ class Result_DB(DB):
     __semester_num: int
     __college_id: str
     __subject_credits_dict: dict[str, int]
+    __degree_doc_id: str
 
     def __init__(self, university_name: str = ''):
         super().__init__()
@@ -75,6 +76,8 @@ class Result_DB(DB):
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
         self.__subject_credits_dict = {}
+        self.__degree_doc_id = ''
+        self.__semester_num = 0
     
     @classmethod
     async def create(cls, university_name: str = ''):
@@ -249,6 +252,7 @@ class Result_DB(DB):
                 "branch_name": branch_name,
                 "colleges": list(),
                 "subjects": dict(),
+                "sem_results": dict(),  # key: sem_num, value: gdrive file id
                 "batch_year": batch_doc["batch_num"],
                 "batch_id": batch_doc_id,
                 "folder_id": self.__gdrive_upload_folder_id
@@ -277,118 +281,77 @@ class Result_DB(DB):
         )
         return degree_doc_id
 
-    async def __create_new_college(
+    async def __adding_updating_new_college_degree(
         self,
-        degree_doc_id: str,
         college_id: str,
         college_name: str,
         semester_num: int,
         is_evening_shift: bool = False
     ) -> str:
         """
-        It will create new college if not already exist, also link with respective degree and return college doc id
+        It will add or update a new college for a given degree
         """
 
         # college_folder_name = f'{college_id} - {college_name}'
-        college_doc_id = ''
         shift = 'M'
         updated_degree = None
 
         degree_doc = await self.__degree_collec.find_one({
-            "_id": degree_doc_id,
+            "_id": self.__degree_doc_id,
         }, session = self.__session)
 
         if is_evening_shift:
             shift = 'E'            
 
-        # Find the college doc id for the given college id and shift
-        college_doc_id = next((
-            college[shift][1] for college in degree_doc["colleges"]
-                if shift in college and college_id == college[shift][0]
-            ), None
+        # Check if college already exist (might have different shift doesn't matter)
+        isCollegeExist = any(
+            college.get("college_name") == college_name
+            for college in degree_doc.get("colleges", [])
         )
+      
+        # Already college with different shift exist, merge new one with existing one in array and link in degree
+        if isCollegeExist:
+            result_db_logger.info(f"College {college_id} - {college_name} found with different shift, adding new shift {SHIFT_COLLEGE_MAP[shift]}...")
+            updated_degree = await self.__degree_collec.update_one({
+                "_id": self.__degree_doc_id,
+                "colleges": {
+                    "$elemMatch": {
+                        f"college_name": college_name
+                    }
+                }}, {
+                    "$set": {
+                        f"colleges.$.shifts.{shift}": college_id
+                    }, "$addToSet": {
+                        "colleges.$.available_semester": semester_num
+                    }
+                }, session = self.__session
+            )
+            result_db_logger.info(f"College {college_id} - {college_name} has been successfully added with new shift {SHIFT_COLLEGE_MAP[shift]}")
 
-        # Getting gdrive folder id, if college already existing for given id and shift
-        if college_doc_id:
-            college_doc = await self.__college_collec.find_one({
-                "_id": college_doc_id
-            }, session = self.__session)
-            # if college_doc:
-            #     self.__gdrive_upload_folder_id = college_doc["folder_id"]
-            if not college_doc:
-                college_doc_id = None   
-        
-        # If not existing then create new college for particular id and shift
-        if not college_doc_id:
-            existing_clg = await self.__college_collec.find_one({
-                "college_name": college_name,
-                "degree_id": degree_doc_id
-            }, session = self.__session)
-
-            result_db_logger.info(f"Creating new college {college_id} - {college_name}...")
-            new_college_details = {
-                "college_id": college_id,
-                "college_name": college_name,
-                "degree_id": degree_doc_id,
-                # "folder_id": self.__gdrive.create_folder_inside_given_dir(
-                #     college_folder_name,
-                #     degree_doc["folder_id"],
-                #     self.__final_folder_path_tracker
-                # )
-            }
-            new_college_doc = await self.__college_collec.insert_one(new_college_details, session = self.__session)
-            college_doc_id = new_college_doc.inserted_id
-            # self.__gdrive_upload_folder_id = new_college_details["folder_id"]
-            result_db_logger.info(f"College {college_id} - {college_name} created successfully")
-
-            result_db_logger.info(f"Linking college({SHIFT_COLLEGE_MAP[shift]} shift) with degree...")
-            if existing_clg:
-                # Already college with different shift exist, merge new one with existing one in array and link in degree
-                updated_degree = await self.__degree_collec.update_one({
-                    "_id": degree_doc_id,
+        # No college with different shift exist, so just push new one in array and link in degree
+        else:
+            result_db_logger.info(f"Adding new College {college_id} - {college_name} with {SHIFT_COLLEGE_MAP[shift]} shift...")
+            updated_degree = await self.__degree_collec.update_one({
+                "_id": self.__degree_doc_id
+            }, {
+                "$push": {
                     "colleges": {
-                        "$elemMatch": {
-                            f"shifts.{ 'M' if shift == 'E' else 'M' }.0": existing_clg["college_id"] # Find the element where M[0] or E[0] matches
-                        }
-                    }}, {
-                        "$set": {
-                            f"colleges.$.shifts.{shift}": [college_id, college_doc_id]
-                        }, "$addToSet": {
-                            "colleges.$.available_semester": semester_num
-                        }
-                    }, session = self.__session
-                )
-            else:
-                # No college with different shift exist, so just push new one in array and link in degree
-                updated_degree = await self.__degree_collec.update_one({
-                    "_id": degree_doc_id
-                }, {
-                    "$push": {
-                        "colleges": {
-                            "college_name": college_name,
-                            "available_semester": [semester_num],
-                            "shifts": {
-                                shift: [college_id, college_doc_id]
-                            }
+                        "college_name": college_name,
+                        "available_semester": [semester_num],
+                        "shifts": {
+                            shift: college_id
                         }
                     }
-                }, session = self.__session)
+                }
+            }, session = self.__session)
+            result_db_logger.info(f"College {college_id} - {college_name} has been successfully added with shift {SHIFT_COLLEGE_MAP[shift]}")
 
-            if updated_degree.modified_count > 0:
-                result_db_logger.info(f"Linked college({SHIFT_COLLEGE_MAP[shift]} shift) with degree successfully")
-            else:
-                result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree, {updated_degree}")
-                raise Exception(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
-            
-        # self.__final_folder_path_tracker = os.path.join(
-        #     self.__final_folder_path_tracker,
-        #     college_folder_name
-        # )
-        return college_doc_id
+        if updated_degree.modified_count <= 0:
+            result_db_logger.error(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree, {updated_degree}")
+            raise Exception(f"Failed to link college({SHIFT_COLLEGE_MAP[shift]} shift) with degree")
 
     async def __add_subjects_to_degree(
         self,
-        degree_doc_id: str,
         subject_ids: list[tuple[str, str]]
     ):
         """
@@ -397,7 +360,7 @@ class Result_DB(DB):
 
         # Getting existing degree to fetch subjects already added
         existing_degree = await self.__degree_collec.find_one({
-            "_id": degree_doc_id
+            "_id": self.__degree_doc_id
         }, {
             "subjects": 1
         }, session = self.__session)
@@ -414,13 +377,41 @@ class Result_DB(DB):
         
         updated_degree = await self.__degree_collec.update_one(
             {
-                "_id": degree_doc_id
+                "_id": self.__degree_doc_id
             }, {
                 "$set": new_subjects_to_add
             }, session = self.__session
         )
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
+    
+    async def __link_res_file(
+        self,
+        degree_doc_id: str,
+        sem_num: int,
+        gdrive_file_id: str
+    ):
+        """
+        It will link result file id in degree document
+        """
+
+        result_db_logger.info(f"Linking semester {sem_num} result (file id: {gdrive_file_id}) with degree {degree_doc_id}...")
+        updates = await self.__degree_collec.update_one({
+            "_id": degree_doc_id
+        }, {
+            "$set": {
+                f"sem_results.{sem_num}": gdrive_file_id
+            }
+        })
+
+        if updates.matched_count == 0:
+            result_db_logger.error(f"While linking result file with degree {degree_doc_id}, degree not found, {updates}")
+            raise Exception("Degree not found")
+        elif updates.modified_count == 0:
+            result_db_logger.error(f"While linking result file with degree {degree_doc_id}, degree not updated, {updates}")
+            raise Exception("Degree not updated")
+        else:
+            result_db_logger.info(f"Result file linked with degree successfully")
     
     def __get_grade_point(self, grade: str) -> int:
         """
@@ -501,9 +492,9 @@ class Result_DB(DB):
         self.__college_id = college_id  # For data storing and uploading in future
         
         batch_doc_id = await self.__create_new_batch(batch)
-        degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
-        await self.__add_subjects_to_degree(degree_doc_id, subject_ids)
-        await self.__create_new_college(degree_doc_id, college_id, college_name, semester_num, is_evening_shift)
+        self.__degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
+        await self.__add_subjects_to_degree(subject_ids)
+        await self.__adding_updating_new_college_degree(college_id, college_name, semester_num, is_evening_shift)
         self.__semester_num = semester_num
         
     async def add_subject(
@@ -585,7 +576,13 @@ class Result_DB(DB):
         if not os.path.exists(file_path):
             result_db_logger.info(f"Storing new result...")
             student_result_df.to_csv(file_path, index = False)
-            self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
+            result_gdrive_id = self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
+
+            await self.__link_res_file(
+                degree_doc_id = self.__degree_doc_id,
+                sem_num = self.__semester_num,
+                gdrive_file_id = result_gdrive_id
+            )
             result_db_logger.info(f"Result stored and uploaded successfully")
 
         # If file exists, update it
