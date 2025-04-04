@@ -18,10 +18,5 @@
             "src": "/(.*)",
             "dest": "frontend/$1"
         }
-    ],
-    "functions": {
-        "backend/main.py": {
-            "runtime": "python3.9"
-        }
-    }
+    ]
 }
