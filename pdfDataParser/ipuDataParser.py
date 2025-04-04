@@ -61,7 +61,6 @@ class IPU_Result_Parser:
             if next_page is None:
                 parser_logger.info("No more pages to parse, storing remaining results...")
                 await self.__storing_result()
-                await self.__res_db.abort_transaction()
                 break
 
             parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
