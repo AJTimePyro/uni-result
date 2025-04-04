@@ -49,17 +49,11 @@ class Degree(BaseResultModel):
     degree_id: str
     degree_name: str
     branch_name: str
-    colleges: Optional[list[dict[str, str | list[int] | dict[str, list[str]]]]] = None
+    colleges: Optional[list[dict[str, str | list[int] | dict[str, str]]]] = None
     subjects: Optional[dict[str, str]] = None
+    sem_results: Optional[dict[str, str]] = None
     batch_id: str
     batch_year: int
-    folder_id: Optional[str] = None
-
-class College(BaseResultModel):
-    id: str
-    college_id: str
-    college_name: str
-    degree_id: str
     folder_id: Optional[str] = None
 
 class Subject(BaseResultModel):
@@ -74,9 +68,7 @@ class Subject(BaseResultModel):
     university_id: Optional[str] = None
 
 class ResultRequest(BaseModel):
-    university_name: str
-    batch_year: int
-    degree_id: str
     college_id: str
     semester_num: int
     degree_doc_id: str
+    result_file_id: str

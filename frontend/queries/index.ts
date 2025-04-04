@@ -23,30 +23,26 @@ export const fetchDegrees = async (batchID: string) : Promise<Degree[]> => {
     return res.data.degrees;
 }
 
-export const fetchColleges = async (degreeID: string) : Promise<College[]> => {
+export const fetchColleges = async (degreeID: string) : Promise<[College[], Record<string, string>]> => {
     const res = await axios.get(`/fastapi/degree?id=${degreeID}`);
-    return res.data.colleges;
+    return [res.data.colleges, res.data.sem_results];
 }
 
 export const fetchRanklistResult = async ({
-    uniName,
-    batchYear,
-    degreeID,
-    collegeID,
-    semNum,
-    degreeDocID
+    college_id,
+    semester_num,
+    degree_doc_id,
+    result_file_id
 }: RankListRequestJSON) => {
-    if (!uniName || !batchYear || !degreeID || !collegeID || !semNum || !degreeDocID) {
+    if (!college_id || !semester_num || !degree_doc_id || !result_file_id) {
         return {};
     }
 
     const res = await axios.post("/fastapi/result", {
-        university_name: uniName,
-        batch_year: batchYear,
-        degree_id: degreeID,
-        college_id: collegeID,
-        semester_num: semNum,
-        degree_doc_id: degreeDocID
+        college_id,
+        semester_num,
+        degree_doc_id,
+        result_file_id
     })
     return res.data
 }

@@ -1,10 +1,12 @@
 import os
+import io
 from lib.env import ENV
 from lib.utils import create_local_folder
 from lib.logger import gdrive_logger
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload
 
 SERVICE_ACCOUNT_INFO = {
     "type": "service_account",
@@ -200,3 +202,17 @@ class GDrive:
             gdrive_logger.error(f"File {file_name} not found in folder {folder_id}")
             raise FileNotFoundError(f"File {file_name} not found in folder {folder_id}")
             
+    def read_gdrive_file(self, file_id: str) -> str:
+        """
+        It will read the file from google drive and return the file content
+        """
+
+        request = self.__drive.files().get_media(fileId = file_id)
+        file_content = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_content, request)
+        done = False
+        while done is False:
+            _, done = downloader.next_chunk()
+        
+        file_content.seek(0)    # Reset pointer
+        return io.TextIOWrapper(file_content, encoding='utf-8')

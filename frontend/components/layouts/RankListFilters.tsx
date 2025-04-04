@@ -34,6 +34,7 @@ interface CollegeDropDownProps extends CommonDropdownProps {
     degreeID: string;
     selectedCollege: College;
     setSelectedCollege: Dispatch<SetStateAction<College>>;
+    setSemResultIDs: Dispatch<SetStateAction<Record<string, string>>>;
 }
 
 interface ShiftDropDownProps extends CommonDropdownProps {
@@ -240,25 +241,29 @@ const CollegeDropDown = memo(({
     degreeID,
     selectedCollege,
     setSelectedCollege,
+    setSemResultIDs,
     isActive,
     setActiveDropDown,
     dropdownKey,
 }: CollegeDropDownProps) => {
-    const { data = [], isSuccess } = useQuery<College[]>({
+    const { data = [], isSuccess } = useQuery<[College[], Record<string, string>]>({
         queryKey: QUERY_KEYS.colleges(degreeID),
         queryFn: () => fetchColleges(degreeID),
         enabled: !!degreeID
     });
 
     const options = useMemo(() =>
-        data.map((c) => c.college_name),
+        data[0]?.map((c) => c.college_name) || [],
         [data]
     );
 
     useEffect(() => {
+        if (!isSuccess) return;
+        setSemResultIDs(data[1] || {})
+
         if (!selectedCollege.college_name || !isSuccess) return;
 
-        const college = data.find((c) => c.college_name === selectedCollege.college_name);
+        const college = data[0]?.find((c) => c.college_name === selectedCollege.college_name);
         if (college) {
             setSelectedCollege(college);
         } else {
@@ -267,7 +272,7 @@ const CollegeDropDown = memo(({
     }, [degreeID, data, isSuccess, selectedCollege.college_name, setSelectedCollege]);
 
     const handleSelect = useCallback((value: string) => {
-        const clg = data.find(c => c.college_name === value);
+        const clg = data[0]?.find(c => c.college_name === value);
         setSelectedCollege({
             college_name: clg?.college_name || "",
             available_semester: clg?.available_semester || [],
@@ -313,45 +318,42 @@ const ShiftDropDown = memo(({
     useEffect(() => {
         const { M, E } = selectedCollege.shifts;
         if (!!M !== !!E) {  // XOR Operation for high level datastructure
-            const clgShift = M || E;
+            const clgID = M || E;
             setSelectedCollegeShift({
                 shift: M ? 'Morning' : 'Evening',
-                collegeID: clgShift![0],
-                id: clgShift![1]
+                collegeID: clgID!,
             });
             return;
         }
 
-        if (!selectedCollegeShift.id) return;
+        if (!selectedCollegeShift.collegeID) return;
 
-        const clgShift = selectedCollege.shifts[selectedCollegeShift.shift === 'Morning' ? 'M' : 'E'];
-        if (!clgShift) {
+        const clgID = selectedCollege.shifts[selectedCollegeShift.shift === 'Morning' ? 'M' : 'E'];
+        if (!clgID) {
             setSelectedCollegeShift({
                 shift: "",
-                collegeID: "",
-                id: ""
+                collegeID: ""
             });
             return;
         }
 
-        if (clgShift[1] !== selectedCollegeShift.id) {
+        if (clgID !== selectedCollegeShift.collegeID) {
             setSelectedCollegeShift({
                 shift: selectedCollegeShift.shift,
-                collegeID: clgShift[0],
-                id: clgShift[1]
+                collegeID: clgID[0]
             });
         }
-    }, [selectedCollege.shifts, selectedCollegeShift.id, selectedCollegeShift.shift, setSelectedCollegeShift]);
+    }, [selectedCollege.shifts, selectedCollegeShift.collegeID, selectedCollegeShift.shift, setSelectedCollegeShift]);
 
     const handleSelect = useCallback((value: string) => {
         if (["Morning", "Evening"].includes(value)) {
-            const clgShift = value === 'Morning' ? selectedCollege.shifts.M : selectedCollege.shifts.E;
-            if (!clgShift) return;
+            const clgID = value === 'Morning' ? selectedCollege.shifts.M : selectedCollege.shifts.E;
+            if (!clgID) return;
 
             setSelectedCollegeShift({
                 shift: value as CollegeShift['shift'],
-                collegeID: clgShift[0],
-                id: clgShift[1]
+                collegeID: clgID,
+                // id: clgShift[1]
             });
             setActiveDropDown(null);
         }
@@ -438,8 +440,9 @@ export default function RankListFilters({ isButtonLoading, callBackFetchResult }
         id: ""
     });
     const [selectedCollege, setSelectedCollege] = useState<College>({ college_name: "", available_semester: [], shifts: {} });
-    const [selectedCollegeShift, setSelectedCollegeShift] = useState<CollegeShift>({ shift: "", collegeID: "", id: "" });
+    const [selectedCollegeShift, setSelectedCollegeShift] = useState<CollegeShift>({ shift: "", collegeID: "" });
     const [selectedSemester, setSelectedSemester] = useState<number>(0);
+    const [semResultIDs, setSemResultIDs] = useState<Record<string, string>>({});
 
     const setActiveDropDown = useCallback((dropdown: DropdownKey | null) => {
         setActiveDropdown(dropdown);
@@ -447,12 +450,10 @@ export default function RankListFilters({ isButtonLoading, callBackFetchResult }
 
     const buttonHandler = () => {
         const requestJson: RankListRequestJSON = {
-            uniName: process.env.NEXT_PUBLIC_UNI_GGSIPU || '',
-            batchYear: parseInt(selectedSessionYear.year),
-            degreeID: selectedBranch.degreeID,
-            collegeID: selectedCollegeShift.collegeID,
-            semNum: selectedSemester,
-            degreeDocID: selectedBranch.id
+            college_id: selectedCollegeShift.collegeID,
+            degree_doc_id: selectedBranch.id,
+            semester_num: selectedSemester,
+            result_file_id: semResultIDs[selectedSemester.toString()]
         }
         callBackFetchResult(requestJson)
     }
@@ -491,6 +492,7 @@ export default function RankListFilters({ isButtonLoading, callBackFetchResult }
                     degreeID={selectedBranch.id}
                     selectedCollege={selectedCollege}
                     setSelectedCollege={setSelectedCollege}
+                    setSemResultIDs={setSemResultIDs}
                     isActive={activeDropdown === "College"}
                     setActiveDropDown={setActiveDropDown}
                     dropdownKey="College"

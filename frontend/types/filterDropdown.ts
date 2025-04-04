@@ -24,22 +24,19 @@ type College = {
     college_name: string;
     available_semester: number[];
     shifts: {
-        M?: string[];    // two elements - [college id, college doc id]
-        E?: string[];    // two elements - [college id, college doc id]
+        M?: string;    // two elements - [college id, college doc id]
+        E?: string;    // two elements - [college id, college doc id]
     }
 }
 
 type CollegeShift = {
     shift: "Morning" | "Evening" | "";
     collegeID: string;  // Actual college id assigned by university
-    id: string; // College doc id assigned in database for indexing
 }
 
 type RankListRequestJSON = {
-    uniName: string;
-    batchYear: number;
-    degreeID: string;
-    collegeID: string;
-    semNum: number;
-    degreeDocID: string;
+    college_id: string
+    semester_num: number
+    degree_doc_id: string
+    result_file_id: string
 }

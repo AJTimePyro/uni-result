@@ -6,100 +6,45 @@ from backend.fetch_result_db import Fetch_Result_DB
 from bson import ObjectId
 from backend.models import Subject
 from ast import literal_eval
+from lib.gdrive import GDrive
 
-GRADE_RATING_GGSIPU = {
-    'O': 10,
-    'A+': 9,
-    'A': 8,
-    'B+': 7,
-    'B': 6,
-    'C': 5,
-    'P': 4,
-    'F': 0
-}
+gDrive = GDrive()
 
 class Fetch_Result_CSV:
-    __university_name: str
-    __batch_year: int
-    __degree_id: str
+    __college_id: str
+    __degree_doc_id: str
     __semester_num: int
-    __result_path: str
-    __common_path: str
+    __result_file_id: str
 
     def __init__(
         self,
-        uni_name: str,
-        batch_year: int,
-        degree_id: str,
+        college_id: str,
+        degree_doc_id: str,
         semester_num: int
     ):
-        self.__university_name = uni_name
-        self.__batch_year = batch_year
-        self.__degree_id = degree_id
+        self.__college_id = college_id
+        self.__degree_doc_id = degree_doc_id
         self.__semester_num = semester_num
-
-        self.__result_path = ENV.LOCAL_RESULT_FOLDER_PATH
-        self.__common_path = ''
-        self.__reach_common_result_folder()
+        self.__result_file_id = result_file_id
     
-    async def get_college_result(self, college_id: str, degree_doc_id: str):
+    async def get_college_result(self):
         """
         It will get result file of given college
         """
 
         # Getting result file
-        result_file = self.__find_college_result_file(college_id)
-        result_df = pd.read_csv(result_file, dtype=str)
+        get_result_data = gDrive.read_gdrive_file(self.__result_file_id)
+        result_df = pd.read_csv(get_result_data, dtype=str)
 
         # Getting all required subject data
         sub_id_list = self.__get_sub_id_list(result_df)
-        subject_data_list = await self.__get_subject_data(sub_id_list, degree_doc_id)
+        subject_data_list = await self.__get_subject_data(sub_id_list, self.__degree_doc_id)
 
         # Getting final result
-        final_result_df = self.__get_single_college_result(result_df, college_id)
+        final_result_df = self.__get_single_college_result(result_df, self.__college_id)
         self.__assign_ranks(final_result_df)
 
         return final_result_df.sort_values(by="rank", ascending=True).to_dict(orient="records"), subject_data_list
-
-    def __find_college_result_file(self, college_id: str) -> str:
-        """
-        Return the path of result file of given college
-        """
-
-        # Getting result file path
-        result_file_path = os.path.join(self.__common_path, f'{self.__semester_num:02d}.csv')
-        if not os.path.exists(result_file_path):
-            raise FileNotFoundError(f"File '{result_file_path}' not found.")
-
-        return result_file_path
-
-    def __find_directory_startsWith(
-        self,
-        directory_path: str,
-        directory_prefix: str
-    ) -> str | None:
-        """
-        Return the path of directory with given directory prefix
-        """
-
-        if not os.path.exists(directory_path):
-            raise FileNotFoundError(f"Directory '{directory_path}' not found.")
-
-        for folder_name in os.listdir(directory_path):
-            if folder_name.startswith(directory_prefix):
-                return os.path.join(directory_path, folder_name)
-        else:
-            return None
-
-    def __reach_common_result_folder(self):
-        """
-        It will reach the common result folder
-        """
-
-        self.__common_path = os.path.join(self.__result_path, self.__university_name, str(self.__batch_year))
-        self.__common_path = self.__find_directory_startsWith(self.__common_path, self.__degree_id)
-        if self.__common_path is None:
-            raise FileNotFoundError(f"Folder with name starting with '{self.__degree_id}' not found in {self.__result_path}/{self.__university_name}/{self.__batch_year}")
         
     def __get_sub_id_list(self, result_csv: pd.DataFrame) -> list[str]:
         """
@@ -134,7 +79,6 @@ class Fetch_Result_CSV:
         Return the result of given college
         """
 
-        # clg_id : int = int(clg_id)
         clg_result_df = result_df[result_df['college_id'] == clg_id]
         return clg_result_df.fillna("")
     
