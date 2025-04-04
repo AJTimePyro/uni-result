@@ -5,8 +5,8 @@
             "use": "@vercel/next"
         },
         {
-            "src": "/backend/main.py",
-            "use": "@now/python"
+            "src": "backend/main.py",
+            "use": "@vercel/python"
         }
     ],
     "routes": [
@@ -18,5 +18,10 @@
             "src": "/(.*)",
             "dest": "frontend/$1"
         }
-    ]
+    ],
+    "functions": {
+        "backend/main.py": {
+            "runtime": "python3.9"
+        }
+    }
 }
