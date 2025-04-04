@@ -430,6 +430,13 @@ const SemesterDropDown = memo(({
     prevProps.isActive === nextProps.isActive
 );
 
+SessionYearDropDown.displayName = "SessionYearDropDown";
+BranchDropDown.displayName = "BranchDropDown";
+DegreeDropDown.displayName = "DegreeDropDown";
+CollegeDropDown.displayName = "CollegeDropDown";
+ShiftDropDown.displayName = "ShiftDropDown";
+SemesterDropDown.displayName = "SemesterDropDown";
+
 export default function RankListFilters({ isButtonLoading, callBackFetchResult }: RankListFiltersProps) {
     const [activeDropdown, setActiveDropdown] = useState<DropdownKey | null>(null);
     const [selectedSessionYear, setSelectedSessionYear] = useState<SessionYear>({ year: "", id: "" });

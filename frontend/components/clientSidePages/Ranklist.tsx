@@ -1,7 +1,7 @@
 'use client'
 
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import RankListFilters from "../layouts/RankListFilters";
 import { motion } from "framer-motion";
 import TopPerformers from "../layouts/TopPerformers";
@@ -75,12 +75,12 @@ export default function RankListClientSide() {
         refetch()
     }
 
-    const filteredData = useMemo(() => {
-        return rankListResult.filter(student =>
-            student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.roll_num.includes(searchQuery)
-        );
-    }, [searchQuery]);
+    // const filteredData = useMemo(() => {
+    //     return rankListResult.filter(student =>
+    //         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    //         student.roll_num.includes(searchQuery)
+    //     );
+    // }, [searchQuery]);
 
     return (
         <div className="container mx-auto relative z-10 space-y-5">
