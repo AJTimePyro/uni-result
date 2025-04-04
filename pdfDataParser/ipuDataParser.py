@@ -60,26 +60,27 @@ class IPU_Result_Parser:
             next_page = self.__get_next_page()
             if next_page is None:
                 parser_logger.info("No more pages to parse, storing remaining results...")
-                self.__storing_result()
+                await self.__storing_result()
+                await self.__res_db.abort_transaction()
                 break
 
             parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
 
             if self.__is_page_contains_subject_list(next_page):
                 parser_logger.info("Found subject list, storing previous results...")
-                self.__storing_result()
+                await self.__storing_result()
 
                 await self.__start_subjects_parser(next_page)
             else:
                 await self.__start_student_results_parser(next_page)
     
-    def __storing_result(self):
+    async def __storing_result(self):
         if len(self.__students_result_list) == 0:
             parser_logger.warning("No results to store, skipping it...")
             return
         
         parser_logger.info("Storing and uploading results...")
-        self.__res_db.store_and_upload_result(
+        await self.__res_db.store_and_upload_result(
             student_result_list = self.__students_result_list
         )
 

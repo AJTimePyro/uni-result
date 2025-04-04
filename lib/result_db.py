@@ -2,6 +2,7 @@ import os
 import pymongo
 import pymongo.database
 import pymongo.collection
+from pymongo import WriteConcern, ReadConcern, ReadPreference
 import re
 import pandas as pd
 import numpy as np
@@ -84,11 +85,40 @@ class Result_DB(DB):
         self = cls()
 
         if university_name:
+            await self.start_transaction()
             await self.connect_to_university(university_name)
             return self
         else:
             result_db_logger.error("University Name should be provided")
             raise ValueError("University Name should be provided")
+    
+    async def start_transaction(self):
+        """
+        It will start transaction
+        """
+
+        self.__session = await self._client.start_session()
+        self.__transaction = self.__session.start_transaction(
+            read_concern=ReadConcern("snapshot"),
+            write_concern=WriteConcern("majority"),
+            read_preference=ReadPreference.PRIMARY
+        )
+    
+    async def commit_transaction(self):
+        """
+        It will commit transaction
+        """
+
+        await self.__session.commit_transaction()
+        await self.__session.end_session()
+
+    async def abort_transaction(self):
+        """
+        It will abort transaction
+        """
+
+        await self.__session.abort_transaction()
+        await self.__session.end_session()
     
     async def connect_to_university(self, university_name: str, short_name: str = ''):
         """
@@ -107,7 +137,8 @@ class Result_DB(DB):
                     "folder_id": self.__gdrive.create_folder_inside_parent_dir(university_name)
                 }
             }, upsert = True,
-            return_document = pymongo.ReturnDocument.AFTER
+            return_document = pymongo.ReturnDocument.AFTER,
+            session = self.__session
         )
         result_db_logger.info(f"Connected to {university_name} successfully")
         self.__final_folder_path_tracker = university_name
@@ -134,18 +165,20 @@ class Result_DB(DB):
                     self.__uni_document["folder_id"],
                     self.__final_folder_path_tracker
                 )
-            })
+            }, session = self.__session)
             batch_doc_id = new_batch.inserted_id
             result_db_logger.info(f"Batch {batch_num_str} created successfully")
 
             result_db_logger.info(f"Linking batch with university...")
             updated_uni_doc = await self.__uni_collec.find_one_and_update({
-                "_id": self.__uni_document["_id"]
-            }, {
-                "$set": {
-                    f"batches.{str(batch_num)}": batch_doc_id
-                }
-            }, return_document = pymongo.ReturnDocument.AFTER)
+                    "_id": self.__uni_document["_id"]
+                }, {
+                    "$set": {
+                        f"batches.{str(batch_num)}": batch_doc_id
+                    }
+                }, return_document = pymongo.ReturnDocument.AFTER,
+                session = self.__session
+            )
             if updated_uni_doc:
                 self.__uni_document = updated_uni_doc
                 result_db_logger.info(f"Linked batch with university successfully")
@@ -180,7 +213,7 @@ class Result_DB(DB):
         
         batch_doc = await self.__batch_collec.find_one({
             "_id": batch_doc_id
-        })
+        }, session = self.__session)
 
         if not batch_doc:
             result_db_logger.error(f"Batch {batch_doc_id} not found")
@@ -193,7 +226,7 @@ class Result_DB(DB):
                 "_id": degree_doc_id
             }, {
                 "folder_id": 1
-            })
+            }, session = self.__session)
 
             if existing_degree:
                 self.__gdrive_upload_folder_id = existing_degree["folder_id"]
@@ -219,7 +252,7 @@ class Result_DB(DB):
                 "batch_year": batch_doc["batch_num"],
                 "batch_id": batch_doc_id,
                 "folder_id": self.__gdrive_upload_folder_id
-            })
+            }, session = self.__session)
             degree_doc_id = new_degree.inserted_id
             result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} created successfully")
 
@@ -230,7 +263,7 @@ class Result_DB(DB):
                 "$set": {
                     f"degrees.{degree_id}": degree_doc_id
                 }
-            })
+            }, session = self.__session)
 
             if updated_batch.modified_count > 0:
                 result_db_logger.info(f"Linked degree with batch successfully")
@@ -263,7 +296,7 @@ class Result_DB(DB):
 
         degree_doc = await self.__degree_collec.find_one({
             "_id": degree_doc_id,
-        })
+        }, session = self.__session)
 
         if is_evening_shift:
             shift = 'E'            
@@ -279,7 +312,7 @@ class Result_DB(DB):
         if college_doc_id:
             college_doc = await self.__college_collec.find_one({
                 "_id": college_doc_id
-            })
+            }, session = self.__session)
             # if college_doc:
             #     self.__gdrive_upload_folder_id = college_doc["folder_id"]
             if not college_doc:
@@ -290,7 +323,7 @@ class Result_DB(DB):
             existing_clg = await self.__college_collec.find_one({
                 "college_name": college_name,
                 "degree_id": degree_doc_id
-            })
+            }, session = self.__session)
 
             result_db_logger.info(f"Creating new college {college_id} - {college_name}...")
             new_college_details = {
@@ -303,7 +336,7 @@ class Result_DB(DB):
                 #     self.__final_folder_path_tracker
                 # )
             }
-            new_college_doc = await self.__college_collec.insert_one(new_college_details)
+            new_college_doc = await self.__college_collec.insert_one(new_college_details, session = self.__session)
             college_doc_id = new_college_doc.inserted_id
             # self.__gdrive_upload_folder_id = new_college_details["folder_id"]
             result_db_logger.info(f"College {college_id} - {college_name} created successfully")
@@ -323,7 +356,7 @@ class Result_DB(DB):
                         }, "$addToSet": {
                             "colleges.$.available_semester": semester_num
                         }
-                    }
+                    }, session = self.__session
                 )
             else:
                 # No college with different shift exist, so just push new one in array and link in degree
@@ -339,7 +372,7 @@ class Result_DB(DB):
                             }
                         }
                     }
-                })
+                }, session = self.__session)
 
             if updated_degree.modified_count > 0:
                 result_db_logger.info(f"Linked college({SHIFT_COLLEGE_MAP[shift]} shift) with degree successfully")
@@ -367,7 +400,7 @@ class Result_DB(DB):
             "_id": degree_doc_id
         }, {
             "subjects": 1
-        })
+        }, session = self.__session)
 
         # Adding subjects which are not present in degree
         new_subjects_to_add = {}
@@ -384,7 +417,7 @@ class Result_DB(DB):
                 "_id": degree_doc_id
             }, {
                 "$set": new_subjects_to_add
-            }
+            }, session = self.__session
         )
         if updated_degree.modified_count > 0:
             result_db_logger.info(f"Subjects added to degree successfully")
@@ -503,7 +536,8 @@ class Result_DB(DB):
                         "university_id": self.__uni_document["_id"]
                     }
             }, upsert = True,
-            return_document = pymongo.ReturnDocument.BEFORE
+            return_document = pymongo.ReturnDocument.BEFORE,
+            session = self.__session
         )
 
         # Storing subject credits to calulate CGPA in future
@@ -517,12 +551,12 @@ class Result_DB(DB):
                 "university_id": self.__uni_document["_id"]
             }, {
                 "_id" : 1
-            })
+            }, session = self.__session)
             result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
 
             return subject_id, sub_data["_id"]
     
-    def store_and_upload_result(
+    async def store_and_upload_result(
         self,
         student_result_list: list[dict[str, str | list[int]]]
     ):
@@ -573,6 +607,7 @@ class Result_DB(DB):
             self.__gdrive.update_existing_file(self.__gdrive_upload_folder_id, file_path)
             result_db_logger.info(f"Result updated and uploaded successfully")
         
+        await self.commit_transaction()
         self.__final_folder_path_tracker = self.__uni_document["name"]
     
     async def add_hall_of_fame_student(
@@ -598,4 +633,4 @@ class Result_DB(DB):
             "college_name": college_name,
             "college_id": college_id,
             "semester_num": semester_num
-        })
+        }, session = self.__session)

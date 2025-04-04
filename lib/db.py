@@ -8,7 +8,6 @@ from motor.motor_asyncio import (
 from lib.env import ENV
 
 mongoClient = AsyncIOMotorClient(ENV.MONGO_STR)
-mongoDatabase = mongoClient["uni_result"]
 
 class DB:
     __db: AsyncIOMotorDatabase
@@ -19,7 +18,8 @@ class DB:
     _subject_collec: AsyncIOMotorCollection
 
     def __init__(self):
-        self.__db = mongoDatabase
+        self._client = mongoClient
+        self.__db = self._client["uni_result"]
 
         self._uni_collec = self.__db["universities"]
         self._batch_collec = self.__db["batches"]
