@@ -20,7 +20,8 @@ class Fetch_Result_CSV:
         self,
         college_id: str,
         degree_doc_id: str,
-        semester_num: int
+        semester_num: int,
+        result_file_id: str
     ):
         self.__college_id = college_id
         self.__degree_doc_id = degree_doc_id
