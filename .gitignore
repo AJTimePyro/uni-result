@@ -7,3 +7,6 @@ dev
 
 # Cache
 __pycache__
+
+# Version setup
+.python-version
