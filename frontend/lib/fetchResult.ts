@@ -5,12 +5,23 @@ import { connectToDatabase } from "./db";
 import mongoose from "mongoose";
 import Subject from "@/models/Subject";
 
+type StudentRecord = {
+    roll_num: string;
+    name: string;
+    college_id: string;
+    total_marks_scored: string;
+    max_marks_possible: string;
+    rank?: number;
+    cgpa: string | number;
+    [key: string]: string | number | undefined;
+};
+
 export class Result {
     private collegeID: string;
     private degreeDocID: string;
     private semNum: number;
     private resultFileID: string;
-    public result: Object[];
+    public result: StudentRecord[];
     public subjects: Object[];
 
     constructor(
@@ -47,7 +58,8 @@ export class Result {
         await this.getAllSubjectData(subIDList)
 
         // Filtering result
-        this.result = records.filter(row => row["college_id"] === this.collegeID);
+        const filteredRecords = records.filter((row: StudentRecord) => row["college_id"] === this.collegeID);
+        this.result = this.assignRanks(filteredRecords);
     }
 
     private getAllSubjects(firstRecord: any): string[] {
@@ -69,7 +81,7 @@ export class Result {
         // Getting All Subject Doc IDs
         const subject_doc_id_array: string[] = [];
         subIDList.forEach(subID => {
-            if (degree.subjects.includes(subID)) {
+            if (subID in degree.subjects) {
                 subject_doc_id_array.push(degree.subjects[subID])
             }
         })
@@ -80,5 +92,28 @@ export class Result {
             { _id: { $in: objectIds } },
             { university_id: 0 }
         );
+    }
+
+    private assignRanks(resultData: StudentRecord[]) {
+        const students = resultData.map(student => ({
+            ...student,
+            cgpa: parseFloat(student.cgpa as string)
+        }));
+
+        // Sort in descending order of cgpa
+        students.sort((a: any, b: any) => b.cgpa - a.cgpa);
+
+        // Assigning Ranks
+        let rank = 1;
+        for (let i = 0; i < students.length; i++) {
+            if (i > 0 && students[i].cgpa === students[i - 1].cgpa) {
+                students[i].rank = students[i - 1].rank;
+            } else {
+                students[i].rank = rank;
+            }
+            rank++;
+        }
+
+        return students;
     }
 }
