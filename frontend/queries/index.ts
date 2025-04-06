@@ -20,7 +20,7 @@ export const fetchSessionYears = async (uniName: string) : Promise<Batches> => {
 
 export const fetchDegrees = async (batchID: string) : Promise<Degree[]> => {
     const res = await axios.get(`/api/batch?id=${batchID}`);
-    return res.data.degrees;
+    return res.data;
 }
 
 export const fetchColleges = async (degreeID: string) : Promise<[College[], Record<string, string>]> => {
