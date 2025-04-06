@@ -22,7 +22,7 @@ export class Result {
     private semNum: number;
     private resultFileID: string;
     public result: StudentRecord[];
-    public subjects: Object[];
+    public subjects: object[];
 
     constructor(
         college_id: string,
