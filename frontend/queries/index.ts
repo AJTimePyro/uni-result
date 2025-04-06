@@ -9,22 +9,22 @@ export const QUERY_KEYS = {
 
 // All data fetch functions
 export const fetchAllUniversities = async () => {
-    const res = await axios.get("/fastapi/university/all");
+    const res = await axios.get("/api/university/all");
     return res.data;
 }
 
 export const fetchSessionYears = async (uniName: string) : Promise<Batches> => {
-    const res = await axios.get(`/fastapi/university?name=${uniName}`);
+    const res = await axios.get(`/api/university?name=${uniName}`);
     return res.data.batches;
 }
 
 export const fetchDegrees = async (batchID: string) : Promise<Degree[]> => {
-    const res = await axios.get(`/fastapi/batch?id=${batchID}`);
+    const res = await axios.get(`/api/batch?id=${batchID}`);
     return res.data.degrees;
 }
 
 export const fetchColleges = async (degreeID: string) : Promise<[College[], Record<string, string>]> => {
-    const res = await axios.get(`/fastapi/degree?id=${degreeID}`);
+    const res = await axios.get(`/api/degree?id=${degreeID}`);
     return [res.data.colleges, res.data.sem_results];
 }
 
@@ -38,7 +38,7 @@ export const fetchRanklistResult = async ({
         return {};
     }
 
-    const res = await axios.post("/fastapi/result", {
+    const res = await axios.post("/api/result", {
         college_id,
         semester_num,
         degree_doc_id,
