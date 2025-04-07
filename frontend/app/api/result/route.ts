@@ -1,18 +1,15 @@
-// import { connectToDatabase } from "@/lib/db";
 import { Result } from "@/lib/fetchResult";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     const { college_id, semester_num, degree_doc_id, result_file_id } = await req.json();
-    if (!college_id || !semester_num || !degree_doc_id || !result_file_id) {
+    if (!semester_num || !degree_doc_id || !result_file_id) {   // Empty college id is allowed as it means all
         return NextResponse.json({
             error: "Some data is missing"
         }, {
             status: 400
         })
     }
-
-    // await connectToDatabase()
 
     const resultClient = new Result(
         college_id,

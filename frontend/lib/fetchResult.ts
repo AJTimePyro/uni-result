@@ -57,8 +57,10 @@ export class Result {
         const subIDList = this.getAllSubjects(records[0])
         await this.getAllSubjectData(subIDList)
 
-        // Filtering result
-        const filteredRecords = records.filter((row: StudentRecord) => row["college_id"] === this.collegeID);
+        // Filtering result (If college id is empty then return result of all colleges)
+        const filteredRecords = this.collegeID ?
+            records.filter((row: StudentRecord) => row["college_id"] === this.collegeID) :
+            records;
         this.result = this.assignRanks(filteredRecords);
     }
 

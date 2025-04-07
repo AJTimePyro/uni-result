@@ -34,7 +34,7 @@ export const fetchRanklistResult = async ({
     degree_doc_id,
     result_file_id
 }: RankListRequestJSON) => {
-    if (!college_id || !semester_num || !degree_doc_id || !result_file_id) {
+    if (!semester_num || !degree_doc_id || !result_file_id) {   // Empty college id is allowed as it means all
         return {};
     }
 

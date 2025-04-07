@@ -252,8 +252,8 @@ const CollegeDropDown = memo(({
         enabled: !!degreeID
     });
 
-    const options = useMemo(() =>
-        data[0]?.map((c) => c.college_name) || [],
+    const options = useMemo(() => 
+        data[0]?.length ? ["All", ...(data[0]?.map((c) => c.college_name) || [])] : [],
         [data]
     );
 
@@ -261,7 +261,7 @@ const CollegeDropDown = memo(({
         if (!isSuccess) return;
         setSemResultIDs(data[1] || {})
 
-        if (!selectedCollege.college_name || !isSuccess) return;
+        if (!selectedCollege.college_name || selectedCollege.college_name === "All" || !isSuccess) return;
 
         const college = data[0]?.find((c) => c.college_name === selectedCollege.college_name);
         if (college) {
@@ -272,12 +272,20 @@ const CollegeDropDown = memo(({
     }, [degreeID, data, isSuccess, selectedCollege.college_name, setSelectedCollege]);
 
     const handleSelect = useCallback((value: string) => {
-        const clg = data[0]?.find(c => c.college_name === value);
-        setSelectedCollege({
-            college_name: clg?.college_name || "",
-            available_semester: clg?.available_semester || [],
-            shifts: clg?.shifts || {}
-        });
+        if (value === "All") {
+            setSelectedCollege({
+                college_name: "All",
+                available_semester: data[1] ? Object.keys(data[1]).map(Number) : [],
+                shifts: {}
+            })
+        } else {
+            const clg = data[0]?.find(c => c.college_name === value);
+            setSelectedCollege({
+                college_name: clg?.college_name || "",
+                available_semester: clg?.available_semester || [],
+                shifts: clg?.shifts || {}
+            });
+        }
         setActiveDropDown(null);
     }, [data, setSelectedCollege, setActiveDropDown]);
 
