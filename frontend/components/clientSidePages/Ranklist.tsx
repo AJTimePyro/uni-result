@@ -54,6 +54,7 @@ export default function RankListClientSide() {
     });
     const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
     const [shouldRefetch, setShouldRefetch] = useState(false)
+    const [subjectData, setSubjectData] = useState<Subject[]>([])
 
     const { data, isSuccess, isFetching, refetch } = useQuery({
         queryKey: QUERY_KEYS.rankList(requestJson),
@@ -71,6 +72,7 @@ export default function RankListClientSide() {
     useEffect(() => {
         if (isSuccess) {
             setRankListResult(data.result)
+            setSubjectData(data.subjects)
         }
     }, [isSuccess])
 
@@ -114,7 +116,7 @@ export default function RankListClientSide() {
 
                 <TopPerformers topStudents={rankListResult.slice(0, 3)} />
 
-                <RanklistTable students={rankListResult} />
+                <RanklistTable subjects={subjectData} students={rankListResult} />
             </div>
         </div>
     )

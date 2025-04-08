@@ -1,16 +1,14 @@
+import { useState } from "react";
+import StudentCard from "../layouts/StudentCard";
+
 interface RanklistTableProps {
+    subjects: Subject[];
     students: Student[];
 }
 
-const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
-    const getRankClass = (rank: number): string => {
-        switch (rank) {
-            case 1: return 'bg-yellow-500';
-            case 2: return 'bg-gray-400';
-            case 3: return 'bg-orange-500';
-            default: return '';
-        }
-    };
+const RanklistTable: React.FC<RanklistTableProps> = ({ subjects, students }: RanklistTableProps) => {
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
         <div className="bg-indigo-900/30 rounded-2xl overflow-x-auto border border-indigo-700/50">
@@ -25,14 +23,18 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {students.map((student) => (
+                    {students.slice(3).map((student) => (
                         <tr
                             key={student.roll_num}
                             className="border-b border-indigo-700/30 hover:bg-indigo-900/20 transition"
+                            onClick={() => {
+                                setSelectedStudent(student);
+                                setIsModalOpen(true);
+                            }}
                         >
                             <td className="p-4 font-semibold">
                                 {student.rank <= 3 ? (
-                                    <span className={`px-3 py-1 rounded-full text-white ${getRankClass(student.rank)}`}>
+                                    <span className="px-3 py-1 rounded-full text-white">
                                         {student.rank}
                                     </span>
                                 ) : (
@@ -47,6 +49,16 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students }) => {
                     ))}
                 </tbody>
             </table>
+
+            {
+                isModalOpen &&
+                <StudentCard
+                    studentData={selectedStudent!}
+                    subjectsList={subjects}
+                    open={isModalOpen}
+                    setIsModalOpen={setIsModalOpen}
+                />
+            }
         </div>
     );
 };
