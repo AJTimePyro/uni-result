@@ -451,7 +451,7 @@ class Result_DB(DB):
         grade_points_df = grade_points_df.astype(float)
 
         # Compute total marks scored (skip NaN values)
-        result_df["total_marks_scored"] = marks_df.sum(axis=1, skipna=True)
+        result_df["total_marks_scored"] = marks_df.sum(axis=1, skipna=True).astype(int)
 
         # Compute maximum marks possible (100 per valid subject)
         result_df["max_marks_possible"] = marks_df.notna().sum(axis=1) * 100
