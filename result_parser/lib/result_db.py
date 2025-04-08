@@ -472,6 +472,55 @@ class Result_DB(DB):
         # Compute CGPA safely
         result_df["cgpa"] = np.where(total_credits > 0, np.round(weighted_sum / total_credits, 2), np.nan)
     
+    def __merge_dataframes(self, original_df: pd.DataFrame, new_df: pd.DataFrame):
+        """
+        It will merge result dataframe with degree dataframe
+        """
+
+        def parse_subject(val):
+            try:
+                return literal_eval(val)
+            except (ValueError, SyntaxError):
+                return np.nan
+        
+        # Getting all subject columns (from new dataframe)
+        subject_cols = [col for col in new_df.columns if col.startswith("sub_")]
+
+        # Add new subjects to original_df if not already present
+        for col in subject_cols:
+            if col not in original_df.columns:
+                original_df[col] = np.nan
+
+        # Parse subject columns in both dataframes
+        for col in subject_cols:
+            new_df[col] = new_df[col].apply(parse_subject)
+            original_df[col] = original_df[col].apply(parse_subject)
+        
+        # Identify reappearing/rechecking and new students
+        students_for_update = new_df.index.intersection(original_df.index)
+        new_students = new_df.index.difference(original_df.index)
+
+        for roll_num in students_for_update:
+            for col in subject_cols:
+                updated_sub = new_df.at[roll_num, col]
+                orig_sub = original_df.at[roll_num, col]
+
+                # If new marks are better, or original is missing
+                if isinstance(updated_sub, list):
+                    if not isinstance(orig_sub, list) or updated_sub[1] > orig_sub[1]:
+                        original_df.at[roll_num, col] = updated_sub
+        
+        # Merge dataframes and calculate updated cgpa and total marks
+        updated_df = pd.concat(
+            [original_df, new_df.loc[new_students]],
+            ignore_index = True,
+            join = "outer"
+        )
+        self.__calculate_cgpa(updated_df)
+        updated_df.reset_index(inplace=True)
+
+        return updated_df
+        
     def reset_subject_data_list(self):
         """
         It will reset subject data list
@@ -600,11 +649,7 @@ class Result_DB(DB):
             existing_df = pd.read_csv(existing_result_content, dtype={"roll_num": "string", "college_id": "string"})
 
             # Update existing file with new result
-            updated_df = pd.concat(
-                [existing_df, student_result_df],
-                ignore_index = True,
-                join = "outer"
-            )
+            updated_df = self.__merge_dataframes(existing_df, student_result_df)
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
