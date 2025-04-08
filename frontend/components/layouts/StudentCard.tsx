@@ -213,7 +213,7 @@ const CardContent = memo(({
 }) => (
     <div className="w-full bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
         <CardHeader studentData={studentData} />
-        
+
         <SubjectsList
             subjects={combinedSubjectData}
             expandedSubject={expandedSubject}
@@ -221,6 +221,13 @@ const CardContent = memo(({
         />
     </div>
 ));
+
+StudentInfoHeader.displayName = "StudentInfoHeader";
+ScoreSummary.displayName = "ScoreSummary";
+SubjectDetails.displayName = "SubjectDetails";
+SubjectsList.displayName = "SubjectsList";
+CardHeader.displayName = "CardHeader";
+CardContent.displayName = "CardContent";
 
 export default function StudentCard({ studentData, subjectsList, open, setIsModalOpen }: StudentCardProps) {
     const [expandedSubject, setExpandedSubject] = useState<number | null>(null);

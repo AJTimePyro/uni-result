@@ -8,6 +8,7 @@ export const parseMarkData = (markString: string) => {
             grade: parts[2].replace(/'/g, '')
         };
     } catch (e) {
+        console.error(e);
         return { internal: 0, external: 0, grade: 'N/A' };
     }
 };
