@@ -474,8 +474,13 @@ class Result_DB(DB):
     
     def __merge_dataframes(self, original_df: pd.DataFrame, new_df: pd.DataFrame):
         """
-        It will merge result dataframe with degree dataframe
+        Merge original result dataframe with the new supplementary result dataframe.
+        Updates marks where improved and adds new students and subjects.
         """
+
+        # Set roll_num as index
+        original_df.set_index("roll_num", inplace = True)
+        new_df.set_index("roll_num", inplace = True)
 
         def parse_subject(val):
             try:
@@ -511,13 +516,14 @@ class Result_DB(DB):
                         original_df.at[roll_num, col] = updated_sub
         
         # Merge dataframes and calculate updated cgpa and total marks
+        parts = [original_df, new_df.loc[new_students]]
         updated_df = pd.concat(
-            [original_df, new_df.loc[new_students]],
-            ignore_index = True,
+            [df for df in parts if not df.empty],
+            ignore_index = False,
             join = "outer"
         )
         self.__calculate_cgpa(updated_df)
-        updated_df.reset_index(inplace=True)
+        updated_df.reset_index(inplace = True)
 
         return updated_df
         

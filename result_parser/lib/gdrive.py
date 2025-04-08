@@ -187,7 +187,7 @@ class GDrive:
         gdrive_logger.info(f"Updating existing result in drive {file_name} - {file_id}...")
         
         media = MediaFileUpload(
-            file_name,
+            updated_file_path,
             mimetype = "text/csv",
             resumable = True
         )
