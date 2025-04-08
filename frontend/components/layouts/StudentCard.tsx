@@ -39,7 +39,7 @@ const StudentInfoHeader = memo(({ name, rollNum }: { name: string, rollNum: stri
         </h2>
         <p className="text-sm text-blue-300 flex items-center mt-1">
             <Bookmark size={16} className="mr-2" />
-            Roll #: {rollNum}
+            Roll: {rollNum}
         </p>
     </div>
 ));
@@ -47,8 +47,8 @@ const StudentInfoHeader = memo(({ name, rollNum }: { name: string, rollNum: stri
 const ScoreSummary = memo(({ totalScore, maxScore, cgpa }: { totalScore: number, maxScore: number, cgpa: number }) => (
     <div className="mt-5 p-4 bg-gray-900 bg-opacity-40 backdrop-blur-sm rounded-lg grid grid-cols-3 gap-4">
         <div>
-            <p className="text-sm text-blue-300">Total Score</p>
-            <p className="text-xl font-bold text-white">{totalScore}/{maxScore}</p>
+            <p className="text-sm text-blue-300">Percentage</p>
+            <p className="text-xl font-bold text-white">{((totalScore/maxScore) * 100).toFixed(2)} %</p>
         </div>
         <div>
             <p className="text-sm text-blue-300">CGPA</p>
@@ -234,18 +234,20 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
 
     // Combine the data for display
     const combinedSubjectData = useMemo(() => {
-        return subjectsList.map(subject => {
-            const subKey = `sub_${subject.subject_id}`;
-            const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F']");
+        return subjectsList
+            .filter(subject => studentData[`sub_${subject.subject_id}`])
+            .map(subject => {
+                const subKey = `sub_${subject.subject_id}`;
+                const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F']");
 
-            return {
-                ...subject,
-                internal_marks: markData.internal,
-                external_marks: markData.external,
-                grade: markData.grade,
-                total_marks: markData.internal + markData.external
-            };
-        });
+                return {
+                    ...subject,
+                    internal_marks: markData.internal,
+                    external_marks: markData.external,
+                    grade: markData.grade,
+                    total_marks: markData.internal + markData.external
+                };
+            });
     }, [studentData, subjectsList]);
 
     const toggleSubject = useCallback((index: number) => {
