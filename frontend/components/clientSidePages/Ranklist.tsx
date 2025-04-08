@@ -9,7 +9,7 @@ import RanklistTable from "../ui/RanklistTable";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS, fetchRanklistResult } from "@/queries";
 
-const mockRanklistData : Student[] = [
+const mockRanklistData: Student[] = [
     {
         rank: 1,
         name: "Aisha Patel",
@@ -53,6 +53,7 @@ export default function RankListClientSide() {
         result_file_id: ''
     });
     const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
+    const [shouldRefetch, setShouldRefetch] = useState(false)
 
     const { data, isSuccess, isFetching, refetch } = useQuery({
         queryKey: QUERY_KEYS.rankList(requestJson),
@@ -61,8 +62,11 @@ export default function RankListClientSide() {
     })
 
     useEffect(() => {
-        console.log(isFetching)
-    }, [isFetching])
+        if (shouldRefetch) {
+            refetch()
+            setShouldRefetch(false)
+        }
+    }, [shouldRefetch])
 
     useEffect(() => {
         if (isSuccess) {
@@ -72,7 +76,7 @@ export default function RankListClientSide() {
 
     const callBackFetchResult = (requestJson: RankListRequestJSON) => {
         setRequestJson(requestJson)
-        refetch()
+        setShouldRefetch(true)
     }
 
     // const filteredData = useMemo(() => {
