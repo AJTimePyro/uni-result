@@ -5,7 +5,7 @@ from motor.motor_asyncio import (
     AsyncIOMotorCollection,
     AsyncIOMotorDatabase
 )
-from lib.env import ENV
+from result_parser.lib.env import ENV
 
 mongoClient = AsyncIOMotorClient(ENV.MONGO_STR)
 

@@ -1,8 +1,8 @@
 import os
 import io
-from lib.env import ENV
-from lib.utils import create_local_folder
-from lib.logger import gdrive_logger
+from result_parser.lib.env import ENV
+from result_parser.lib.utils import create_local_folder
+from result_parser.lib.logger import gdrive_logger
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload

@@ -1,6 +1,6 @@
 import logging
 import os
-from lib.env import ENV
+from result_parser.lib.env import ENV
 
 LOG_FILE = os.path.join(ENV.LOG_FOLDER_PATH, "uni_result.log")
 

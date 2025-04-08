@@ -9,11 +9,11 @@ from pymongo.client_session import TransactionOptions
 import re
 import pandas as pd
 import numpy as np
-from lib.env import ENV
-from lib.utils import create_short_form_name
-from lib.gdrive import GDrive
-from lib.logger import result_db_logger
-from lib.db import DB
+from result_parser.lib.env import ENV
+from result_parser.lib.utils import create_short_form_name
+from result_parser.lib.gdrive import GDrive
+from result_parser.lib.logger import result_db_logger
+from result_parser.lib.db import DB
 from ast import literal_eval
 
 # GGSIPU grade rating

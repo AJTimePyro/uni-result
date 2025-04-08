@@ -1,8 +1,8 @@
 from pypdf import PageObject
-from lib.result_db import Result_DB
-from lib.logger import parser_logger
-from lib.utils import normalize_spacing
-from lib.customErrors import OldSessionException
+from result_parser.lib.result_db import Result_DB
+from result_parser.lib.logger import parser_logger
+from result_parser.lib.utils import normalize_spacing
+from result_parser.lib.customErrors import OldSessionException
 from typing import Union
 import re
 
