@@ -61,7 +61,7 @@ class Result_DB(DB):
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
-    __college_collec: pymongo.collection.Collection
+    # __college_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
     __hall_of_fame_collec: pymongo.collection.Collection
     __uni_document: dict
@@ -72,6 +72,7 @@ class Result_DB(DB):
     __college_id: str
     __subject_credits_dict: dict[str, int]
     __degree_doc_id: str
+    __gdrive_file_id: str | None
 
     def __init__(self, university_name: str = ''):
         super().__init__()
@@ -79,7 +80,7 @@ class Result_DB(DB):
         self.__uni_collec = self._uni_collec
         self.__batch_collec = self._batch_collec
         self.__degree_collec = self._degree_collec
-        self.__college_collec = self._college_collec
+        # self.__college_collec = self._college_collec
         self.__subject_collec = self._subject_collec
         self.__hall_of_fame_collec = self._hall_of_fame_collec
 
@@ -88,6 +89,7 @@ class Result_DB(DB):
         self.__subject_credits_dict = {}
         self.__degree_doc_id = ''
         self.__semester_num = 0
+        self.__gdrive_file_id = None
     
     @classmethod
     async def create(cls, university_name: str = ''):
@@ -206,7 +208,8 @@ class Result_DB(DB):
         self,
         batch_doc_id: int,
         degree_id: str,
-        degree_name: str
+        degree_name: str,
+        sem_num: int
     ):
         """
         It will create new degree if not already exist and also link with respective batch. In the end it will also return degree doc id
@@ -235,8 +238,10 @@ class Result_DB(DB):
             existing_degree = await self.__degree_collec.find_one({
                 "_id": degree_doc_id
             }, {
-                "folder_id": 1
+                "folder_id": 1,
+                "sem_results": 1
             })
+            self.__gdrive_file_id = existing_degree["sem_results"].get(str(sem_num))
 
             if existing_degree:
                 self.__gdrive_upload_folder_id = existing_degree["folder_id"]
@@ -265,6 +270,7 @@ class Result_DB(DB):
                 "folder_id": self.__gdrive_upload_folder_id
             })
             degree_doc_id = new_degree.inserted_id
+            self.__gdrive_file_id = None
             result_db_logger.info(f"Degree {degree_id} - {degree_name} {branch_name if branch_name else ''} created successfully")
 
             result_db_logger.info(f"Linking degree with batch...")
@@ -398,7 +404,7 @@ class Result_DB(DB):
         """
 
         result_db_logger.info(f"Linking semester {sem_num} result (file id: {gdrive_file_id}) with degree {self.__degree_doc_id}...")
-        updates = await self.__degree_collec.update_one({
+        await self.__degree_collec.update_one({
             "_id": self.__degree_doc_id
         }, {
             "$set": {
@@ -488,10 +494,11 @@ class Result_DB(DB):
         It will link subjects to respective degree, and also make sure to create new batch and degree if they don't exist
         """
 
+        self.__gdrive_file_id = None
         self.__college_id = college_id  # For data storing and uploading in future
         
         batch_doc_id = await self.__create_new_batch(batch)
-        self.__degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name)
+        self.__degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name, semester_num)
         await self.__add_subjects_to_degree(subject_ids)
 
         await self.start_transaction()
@@ -573,7 +580,7 @@ class Result_DB(DB):
         self.__calculate_cgpa(student_result_df)
 
         # If file doesn't exist, upload it
-        if not os.path.exists(file_path):
+        if not self.__gdrive_file_id:
             result_db_logger.info(f"Storing new result...")
             student_result_df.to_csv(file_path, index = False)
             result_gdrive_id = self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
@@ -589,7 +596,8 @@ class Result_DB(DB):
             result_db_logger.info(f"Updating existing result...")
 
             # Read existing file
-            existing_df = pd.read_csv(file_path, dtype={"roll_num": "string", "college_id": "string"})
+            existing_result_content = self.__gdrive.read_gdrive_file(self.__gdrive_file_id)
+            existing_df = pd.read_csv(existing_result_content, dtype={"roll_num": "string", "college_id": "string"})
 
             # Update existing file with new result
             updated_df = pd.concat(
@@ -600,7 +608,7 @@ class Result_DB(DB):
             updated_df.to_csv(file_path, index = False)
 
             # Upload updated file to drive
-            self.__gdrive.update_existing_file(self.__gdrive_upload_folder_id, file_path)
+            self.__gdrive.update_existing_file(self.__gdrive_file_id, file_path)
             result_db_logger.info(f"Result updated and uploaded successfully")
         
         await self.commit_transaction()

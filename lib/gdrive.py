@@ -176,7 +176,7 @@ class GDrive:
     
     def update_existing_file(
         self,
-        folder_id: str,
+        file_id: str,
         updated_file_path: str
     ):
         """
@@ -184,23 +184,18 @@ class GDrive:
         """
 
         file_name = updated_file_path.split('/')[-1]
-        gdrive_logger.info(f"Updating existing result in drive...")
-        file_id = self.__get_file_id(file_name, folder_id)
-        if file_id:
-            media = MediaFileUpload(
-                updated_file_path,
-                mimetype = "text/csv",
-                resumable = True
-            )
-            self.__drive.files().update(
-                fileId = file_id,
-                media_body = media
-            ).execute()
-            gdrive_logger.info(f"Result updated in drive successfully")
-            
-        else:
-            gdrive_logger.error(f"File {file_name} not found in folder {folder_id}")
-            raise FileNotFoundError(f"File {file_name} not found in folder {folder_id}")
+        gdrive_logger.info(f"Updating existing result in drive {file_name} - {file_id}...")
+        
+        media = MediaFileUpload(
+            file_name,
+            mimetype = "text/csv",
+            resumable = True
+        )
+        self.__drive.files().update(
+            fileId = file_id,
+            media_body = media
+        ).execute()
+        gdrive_logger.info(f"Result updated in drive successfully")
             
     def read_gdrive_file(self, file_id: str) -> str:
         """
