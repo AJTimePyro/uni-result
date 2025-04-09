@@ -15,6 +15,19 @@ DEFAULT_STUDENT_RESULT = {
     'cgpa': 0.00,
 }
 
+SEMESTER_STR_TO_NUM = {
+    "first": 1,
+    "second": 2,
+    "third": 3,
+    "fourth": 4,
+    "fifth": 5,
+    "sixth": 6,
+    "seventh": 7,
+    "eighth": 8,
+    "ninth": 9,
+    "tenth": 10
+}
+
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
 
 class IPU_Result_Parser:
@@ -48,13 +61,11 @@ class IPU_Result_Parser:
         """
 
         parser_logger.info("Starting to parse PDF pages")
-        self.__skip_till_get_subjects_list()
+        if not self.__skip_till_get_subjects_list():
+            return
+        
         first_page = self.__get_next_page()
-        if self.__is_page_contains_subject_list(first_page):
-            await self.__start_subjects_parser(first_page)
-        else:
-            parser_logger.error("First page doesn't contain subject list.")
-            raise Exception("First page doesn't contain subject list.")
+        await self.__start_subjects_parser(first_page)
 
         while True:
             next_page = self.__get_next_page()
@@ -102,14 +113,14 @@ class IPU_Result_Parser:
         It will check whether given page is of subject list or not
         """
 
-        return not page_content.startswith("RESULT TABULATION SHEET")
+        return "SCHEME OF EXAMINATIONS" in page_content
 
     def __exam_meta_data_parser(self, raw_exam_meta_data: str) -> Union[dict[str, int | str], None]:
         """
         It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year; and return in dictionary. If page is supposed to be skipped, then it return False else True
         """
 
-        regexStrForExamMetaData = r'Programme Code:\s(\d{3})\s+Programme Name:\s+(.+)\s+SchemeID:\s\d+\s+Sem./Year:\s(\d{2})\s+SEMESTER\s+Institution Code:\s+(\d{3})\s+Institution:\s+(.+)\n'
+        regexStrForExamMetaData = r'(?:Prg\.|Programme) Code:\s*(\d{3})\s+Programme: ?(?:Name)?:?\s*(.+)\s+SchemeID:\s*\d+\s+Sem\./(?:Year|Annual):\s*(.+?)\s+SEMESTER.*\n.*Institution Code:\s*\'?(\d{3})\'?\s+Institution:\s+(.+)\n'
 
         batch = self.__peek_to_get_batch()
         if batch == 0:
@@ -117,13 +128,25 @@ class IPU_Result_Parser:
         elif batch < self.__starting_session:
             raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
-        exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
+        exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data, flags = re.DOTALL)
+        if exam_meta_data_matched_regex is None:
+            parser_logger.error(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index}, raw data: {raw_exam_meta_data}")
+            raise ValueError(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index}, raw data: {raw_exam_meta_data}")
 
-        degree_code = exam_meta_data_matched_regex.group(1)
+        degree_code = exam_meta_data_matched_regex.group(1).strip()
         degree_name = exam_meta_data_matched_regex.group(2).strip()
-        semester_num = self.__get_int_val(exam_meta_data_matched_regex.group(3))
+        sem_str = exam_meta_data_matched_regex.group(3).strip()
         college_code = exam_meta_data_matched_regex.group(4).strip()
         college_name = exam_meta_data_matched_regex.group(5).strip()
+
+        semester_num = 0
+        if sem_str.isdigit():
+            semester_num = self.__get_int_val(sem_str)
+        else:
+            semester_num = SEMESTER_STR_TO_NUM.get(sem_str.lower(), 0)
+            if semester_num == 0:
+                parser_logger.error(f"Invalid Semester found... {raw_exam_meta_data}")
+                raise ValueError("Invalid Semester Number...")
 
         updated_college_name = normalize_spacing(college_name)
         
@@ -165,14 +188,19 @@ class IPU_Result_Parser:
     
     def __skip_till_get_subjects_list(self):
         """
-        It will skip all the pages till it finds subject list
+        It will skip all the pages till it finds subject list, if no page contains subject list then it will return False
         """
 
         next_page = self.__get_next_page()
         while next_page is not None and not self.__is_page_contains_subject_list(next_page):
             next_page = self.__get_next_page()
         
+        if next_page is None:
+            parser_logger.error("Pdf doesn't contain subject list at all.")
+            return False
+        
         self.__pdf_page_index -= 1
+        return True
     
     async def __subject_parser(self, raw_subject_data: str):
         """
@@ -181,6 +209,9 @@ class IPU_Result_Parser:
 
         regexStrForSubjectData = r'(\d{6})\s+(\w+\s*-?\d{3})\s+(.+)\s+(\d{1,2})\s+(PRACTICAL|THEORY).+(\d{2,3}|--)\s+(\d{2,3})\s+\d{2,3}\s+(\d{2,3})'
         subject_detail = re.search(regexStrForSubjectData, raw_subject_data)
+        if subject_detail is None:
+            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index}, raw data: {raw_subject_data}")
+            return False
 
         subject_id = subject_detail.group(1)
         subject_code = subject_detail.group(2)
@@ -203,6 +234,9 @@ class IPU_Result_Parser:
         subject_list = list()
         for raw_subject_data in raw_subjects_data.split('\n'):
             subject_res = await self.__subject_parser(raw_subject_data)
+            if subject_res is False:
+                continue
+            
             subject_id, subject_doc_id = subject_res
             subject_list.append((subject_id, subject_doc_id))
         return subject_list
@@ -254,7 +288,14 @@ class IPU_Result_Parser:
         """
 
         # Getting index from where result actually starts
-        result_start_index = re.search(r'RTSID:\s+\d+\s*\n', page_data).end()
+        search_start_index = re.search(r'RTSID:\s+\d+\s*\n', page_data)
+        if not search_start_index:
+            parser_logger.warning("RTSID not found, trying with CS/Remarks...")
+            search_start_index = re.search(r'CS/Remarks:?\s*', page_data)
+        if not search_start_index:
+            parser_logger.error(f"RTSID not found in page no. {self.__pdf_page_index}, raw data: {page_data}")
+            raise ValueError(f"RTSID not found in page no. {self.__pdf_page_index}, raw data: {page_data}")
+        result_start_index = search_start_index.end()
 
         raw_result = page_data[result_start_index:].strip()
         students_raw_result_list = self.__get_students_raw_result_list(raw_result)
@@ -288,7 +329,11 @@ class IPU_Result_Parser:
         """
 
         # Getting index of where result actually starts
-        result_start_index = re.search(r'SchemeID:\s+\d{12}\s+', raw_student_data).end()
+        search_result_start_index = re.search(r'SchemeID:\s+\d{12}\s+', raw_student_data)
+        if not search_result_start_index:
+            parser_logger.error(f"SchemeID not found in page no. {self.__pdf_page_index}, raw data: {raw_student_data}")
+            raise ValueError(f"SchemeID not found in page no. {self.__pdf_page_index}, raw data: {raw_student_data}")
+        result_start_index = search_result_start_index.end()
 
         student_detail = raw_student_data[:result_start_index].strip()
         student_marks = raw_student_data[result_start_index:].strip()

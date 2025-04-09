@@ -33,3 +33,6 @@ result_db_logger = get_logger("result_db")
 
 # Create a logger instance for the gdrive
 gdrive_logger = get_logger("gdrive")
+
+# Create a logger instance for the automation
+automation_logger = get_logger("automation")
