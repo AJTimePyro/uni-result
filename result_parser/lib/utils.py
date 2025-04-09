@@ -1,5 +1,6 @@
 import os
 import re
+from urllib.parse import urlparse
 
 def create_short_form_name(full_name: str) -> str:
     """
@@ -28,3 +29,11 @@ def normalize_spacing(text: str) -> str:
     text = re.sub(r'\(', ' (', text)    # Add space before '('
     text = re.sub(r'\s+', ' ', text)    # Remove trailing spaces
     return text
+
+def is_valid_url(url):
+    """
+    It will check if the url is valid
+    """
+
+    parsed = urlparse(url)
+    return all([parsed.scheme, parsed.netloc])
