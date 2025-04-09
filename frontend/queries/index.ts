@@ -38,11 +38,6 @@ export const fetchRanklistResult = async ({
         return {};
     }
 
-    const res = await axios.post("/api/result", {
-        college_id,
-        semester_num,
-        degree_doc_id,
-        result_file_id
-    })
+    const res = await axios.get(`/api/result?college_id=${college_id}&semester_num=${semester_num}&degree_doc_id=${degree_doc_id}&result_file_id=${result_file_id}`)
     return res.data
 }
