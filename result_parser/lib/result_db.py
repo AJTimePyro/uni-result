@@ -10,7 +10,7 @@ import re
 import pandas as pd
 import numpy as np
 from result_parser.lib.env import ENV
-from result_parser.lib.utils import create_short_form_name
+from result_parser.lib.utils import create_short_form_name, standardize_subject_code
 from result_parser.lib.gdrive import GDrive
 from result_parser.lib.logger import result_db_logger
 from result_parser.lib.db import DB
@@ -71,6 +71,7 @@ class Result_DB(DB):
     __semester_num: int
     __college_id: str
     __subject_credits_dict: dict[str, int]
+    subject_id_code_map: dict[str, str]
     __degree_doc_id: str
     __gdrive_file_id: str | None
 
@@ -87,6 +88,7 @@ class Result_DB(DB):
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
         self.__subject_credits_dict = {}
+        self.subject_id_code_map = {}
         self.__degree_doc_id = ''
         self.__semester_num = 0
         self.__gdrive_file_id = None
@@ -539,6 +541,7 @@ class Result_DB(DB):
         """
 
         self.__subject_credits_dict.clear()
+        self.subject_id_code_map.clear()
 
     async def link_all_metadata(
         self,
@@ -581,6 +584,9 @@ class Result_DB(DB):
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
         """
 
+        # Standardizing subject code
+        subject_code = standardize_subject_code(subject_code)
+
         sub_data = await self.__subject_collec.find_one_and_update(
             {
                 "subject_id": subject_id,
@@ -603,6 +609,9 @@ class Result_DB(DB):
 
         # Storing subject credits to calulate CGPA in future
         self.__subject_credits_dict[subject_id] = subject_credit
+
+        # Storing for conversion of subject code to subject id
+        self.subject_id_code_map[subject_code] = subject_id
 
         if sub_data:
             return subject_id, sub_data["_id"]

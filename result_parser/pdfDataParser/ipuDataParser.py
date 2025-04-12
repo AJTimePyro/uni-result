@@ -1,7 +1,7 @@
 from pdfplumber.page import Page
 from result_parser.lib.result_db import Result_DB
 from result_parser.lib.logger import parser_logger
-from result_parser.lib.utils import normalize_spacing
+from result_parser.lib.utils import normalize_spacing, standardize_subject_code
 from result_parser.lib.customErrors import OldSessionException
 from typing import Union
 import re
@@ -361,6 +361,8 @@ class IPU_Result_Parser:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
             subject_id = subject_id_match.group(1).strip()
+            if not subject_id.isdigit():
+                subject_id = self.__res_db.subject_id_code_map[standardize_subject_code(subject_id)]
             
             grade = 'F' # If no match found means, it's fail
             grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])

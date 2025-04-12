@@ -37,3 +37,17 @@ def is_valid_url(url):
 
     parsed = urlparse(url)
     return all([parsed.scheme, parsed.netloc])
+
+
+def standardize_subject_code(code):
+    """
+    It will standardize the subject code
+    """
+
+    cleaned = re.sub(r'[\s\-]+', '', code.strip())
+    match = re.match(r'^([A-Za-z]+)(\d+)$', cleaned)
+    if match:
+        prefix = match.group(1).upper()
+        suffix = match.group(2)
+        return f"{prefix}-{suffix}"
+    return code
