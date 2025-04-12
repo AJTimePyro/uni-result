@@ -1,4 +1,6 @@
-from pypdf import PdfReader, PageObject
+import pdfplumber
+from pdfplumber.pdf import PDF
+from pdfplumber.page import Page
 from result_parser.lib.utils import is_valid_url
 from io import BytesIO
 import os
@@ -6,8 +8,8 @@ import requests
 
 class PDFParser:
     __stream_content : str | None
-    __pdf_pointer : PdfReader | None
-    pdf_pages_list : list[PageObject]
+    __pdf_pointer : PDF | None
+    pdf_pages_list : list[Page]
 
     def __init__(self, filePath = '', pdf_url = ''):
         if not filePath and not pdf_url:
@@ -27,7 +29,7 @@ class PDFParser:
         self.__pdf_pointer = None
 
     def __get_pdf_pointer(self):
-        self.__pdf_pointer = PdfReader(self.__stream_content)
+        self.__pdf_pointer = pdfplumber.open(self.__stream_content)
     
     def __parsing_pdf_pages(self):
         self.pdf_pages_list = self.__pdf_pointer.pages

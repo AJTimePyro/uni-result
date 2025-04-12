@@ -1,4 +1,4 @@
-from pypdf import PageObject
+from pdfplumber.page import Page
 from result_parser.lib.result_db import Result_DB
 from result_parser.lib.logger import parser_logger
 from result_parser.lib.utils import normalize_spacing
@@ -31,14 +31,14 @@ SEMESTER_STR_TO_NUM = {
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
 
 class IPU_Result_Parser:
-    __pdf_pages_list: list[PageObject]
+    __pdf_pages_list: list[Page]
     __pdf_page_index: int
     __students_result_list: list[dict[str, str | list[int]]]
     __students_result_index: int
     __starting_session: int
     __res_db: Result_DB
 
-    def __init__(self, pdf_pages_list: list[PageObject] = [], session_start = 2020):
+    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
@@ -64,11 +64,11 @@ class IPU_Result_Parser:
         if not self.__skip_till_get_subjects_list():
             return
         
-        first_page = self.__get_next_page()
-        await self.__start_subjects_parser(first_page)
+        first_page, page_table = self.__get_next_page()
+        await self.__start_subjects_parser(first_page, page_table)
 
         while True:
-            next_page = self.__get_next_page()
+            next_page, page_table = self.__get_next_page()
             if next_page is None:
                 parser_logger.info("No more pages to parse, storing remaining results...")
                 await self.__storing_result()
@@ -80,9 +80,9 @@ class IPU_Result_Parser:
                 parser_logger.info("Found subject list, storing previous results...")
                 await self.__storing_result()
 
-                await self.__start_subjects_parser(next_page)
+                await self.__start_subjects_parser(next_page, page_table)
             else:
-                await self.__start_student_results_parser(next_page)
+                await self.__start_student_results_parser(page_table)
     
     async def __storing_result(self):
         if len(self.__students_result_list) == 0:
@@ -98,7 +98,7 @@ class IPU_Result_Parser:
         self.__students_result_list.clear()
         self.__students_result_index = -1
     
-    def __get_next_page(self) -> str | None:
+    def __get_next_page(self) -> tuple[str, list[list[str]]] | None:
         """
         Returns next page data as string, if no next page is found, then it will return None
         """
@@ -106,7 +106,7 @@ class IPU_Result_Parser:
         if len(self.__pdf_pages_list) == self.__pdf_page_index + 1:
             return None
         self.__pdf_page_index += 1
-        return self.__pdf_pages_list[self.__pdf_page_index].extract_text()
+        return self.__pdf_pages_list[self.__pdf_page_index].extract_text(), self.__pdf_pages_list[self.__pdf_page_index].extract_table()
     
     def __is_page_contains_subject_list(self, page_content: str) -> bool:
         """
@@ -120,7 +120,7 @@ class IPU_Result_Parser:
         It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year; and return in dictionary. If page is supposed to be skipped, then it return False else True
         """
 
-        regexStrForExamMetaData = r'(?:Prg\.|Programme) Code:\s*(\d{3})\s+Programme: ?(?:Name)?:?\s*(.+)\s+SchemeID:\s*\d+\s+Sem\./(?:Year|Annual):\s*(.+?)\s+SEMESTER.*\n.*Institution Code:\s*\'?(\d{3})\'?\s+Institution:\s+(.+)\n'
+        regexStrForExamMetaData = r'(?:Prg\.|Programme) Code:\s*(\d{3})\s+Programme(?: Name)?\s*:\s*(.+)\s+SchemeID:\s*\d+\s+Sem\./(?:Year|Annual):\s*(.+?)\s+SEMESTER.*\n.*Institution Code:\s*\'?(\d{3})\'?\s+Institution:\s+(.+)\n'
 
         batch = self.__peek_to_get_batch()
         if batch == 0:
@@ -128,10 +128,10 @@ class IPU_Result_Parser:
         elif batch < self.__starting_session:
             raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
-        exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data, flags = re.DOTALL)
+        exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
         if exam_meta_data_matched_regex is None:
-            parser_logger.error(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index}, raw data: {raw_exam_meta_data}")
-            raise ValueError(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index}, raw data: {raw_exam_meta_data}")
+            parser_logger.error(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index + 1}, raw data: {raw_exam_meta_data}")
+            raise ValueError(f"Failed to parse Exam Meta Data from page no. {self.__pdf_page_index + 1}, raw data: {raw_exam_meta_data}")
 
         degree_code = exam_meta_data_matched_regex.group(1).strip()
         degree_name = exam_meta_data_matched_regex.group(2).strip()
@@ -175,7 +175,7 @@ class IPU_Result_Parser:
         It will get batch number from the next page
         """
 
-        next_page = self.__get_next_page()
+        next_page, _ = self.__get_next_page()
         batch = 0
 
         if not self.__is_page_contains_subject_list(next_page):
@@ -191,9 +191,9 @@ class IPU_Result_Parser:
         It will skip all the pages till it finds subject list, if no page contains subject list then it will return False
         """
 
-        next_page = self.__get_next_page()
+        next_page, _ = self.__get_next_page()
         while next_page is not None and not self.__is_page_contains_subject_list(next_page):
-            next_page = self.__get_next_page()
+            next_page, _ = self.__get_next_page()
         
         if next_page is None:
             parser_logger.error("Pdf doesn't contain subject list at all.")
@@ -202,62 +202,61 @@ class IPU_Result_Parser:
         self.__pdf_page_index -= 1
         return True
     
-    async def __subject_parser(self, raw_subject_data: str):
+    async def __subject_parser(self, raw_subject_data: list[str], paper_id_index: int):
         """
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
 
-        regexStrForSubjectData = r'(\d{6})\s+(\w+\s*-?\d{3})\s+(.+)\s+(\d{1,2})\s+(PRACTICAL|THEORY).+(\d{2,3}|--)\s+(\d{2,3})\s+\d{2,3}\s+(\d{2,3})'
-        subject_detail = re.search(regexStrForSubjectData, raw_subject_data)
-        if subject_detail is None:
-            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index}, raw data: {raw_subject_data}")
+        subject_id = raw_subject_data[paper_id_index].strip()
+        subject_code = raw_subject_data[paper_id_index + 1].strip()
+        subject_name = raw_subject_data[paper_id_index + 2].strip()
+        subject_credit = self.__get_int_val(raw_subject_data[paper_id_index + 3])
+
+        if subject_credit == 0 or subject_id == '' or subject_code == '' or subject_name == '':
+            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
             return False
-
-        subject_id = subject_detail.group(1)
-        subject_code = subject_detail.group(2)
-        subject_name = subject_detail.group(3).strip()
-        subject_credit = self.__get_int_val(subject_detail.group(4))
-        subject_type = subject_detail.group(5)
         
-        subject_internal_marks = self.__get_int_val(subject_detail.group(6))
-        subject_external_marks = self.__get_int_val(subject_detail.group(7))
-        subject_passing_marks = self.__get_int_val(subject_detail.group(8))
+        subject_passing_marks = self.__get_int_val(raw_subject_data[-1])
+        subject_max_marks = self.__get_int_val(raw_subject_data[-2])
+        subject_external_marks = self.__get_int_val(raw_subject_data[-3])
+        subject_internal_marks = self.__get_int_val(raw_subject_data[-4])
 
-        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks)
+        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
     
-    async def __subjects_data_parser(self, raw_subjects_data: str):
+    async def __subjects_data_parser(self, raw_subjects_table: list[list[str]]):
         """
         It will divide subjects data into individual subject and then parse each subject
         """
 
         self.__res_db.reset_subject_data_list()
+        paper_id_index = 0
+        if not re.match(r'paper\s*id', raw_subjects_table[0][0].lower()):   # Checking if subjects data starts from 0 or 1, as paper id index will be the starting index of subject data
+            paper_id_index = 1
+
         subject_list = list()
-        for raw_subject_data in raw_subjects_data.split('\n'):
-            subject_res = await self.__subject_parser(raw_subject_data)
+        for subject_num_index in range(1, len(raw_subjects_table)):
+            subject_res = await self.__subject_parser(
+                raw_subjects_table[subject_num_index],
+                paper_id_index
+            )
             if subject_res is False:
-                continue
+                parser_logger.error(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subjects_table}")
+                raise ValueError(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subjects_table}")
             
             subject_id, subject_doc_id = subject_res
             subject_list.append((subject_id, subject_doc_id))
         return subject_list
     
-    async def __start_subjects_parser(self, page_data: str):
+    async def __start_subjects_parser(self, page_data: str, page_table: list[list[str]]):
         """
         It will divide page into two parts, one for metadata and other for subjects data. Then it will parse those two parts
         """
 
         parser_logger.info("Found subject list, parsing it...")
 
-        # Getting index from where subjects actually starts
-        subjects_start_index = re.search(r'Pass Marks', page_data).end()
-
-        # Splitting page data into two parts, one contains exam meta data and other will contain actual subject data
-        exam_meta_data = page_data[:subjects_start_index]
-        subjects_raw_details = page_data[subjects_start_index:].strip()
-
         # Parsing exam meta data as well as subjects data
         try:
-            meta_data = self.__exam_meta_data_parser(exam_meta_data)
+            meta_data = self.__exam_meta_data_parser(page_data)
             if meta_data is None:
                 parser_logger.warning("Next page is also subject list, skipping this page...")
                 return
@@ -268,7 +267,7 @@ class IPU_Result_Parser:
         
         self.__tmp_meta_data = meta_data
 
-        subject_id_list = await self.__subjects_data_parser(subjects_raw_details)
+        subject_id_list = await self.__subjects_data_parser(page_table)
         await self.__res_db.link_all_metadata(
             subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
@@ -282,64 +281,38 @@ class IPU_Result_Parser:
         parser_logger.info("Subject list parsed successfully")
         parser_logger.info("Now parsing student results...")
     
-    async def __start_student_results_parser(self, page_data: str):
+    async def __start_student_results_parser(self, result_table: list[list[str]]):
         """
         This will remove header from page data and then starts parsing
         """
-
-        # Getting index from where result actually starts
-        search_start_index = re.search(r'RTSID:\s+\d+\s*\n', page_data)
-        if not search_start_index:
-            parser_logger.warning("RTSID not found, trying with CS/Remarks...")
-            search_start_index = re.search(r'CS/Remarks:?\s*', page_data)
-        if not search_start_index:
-            parser_logger.error(f"RTSID not found in page no. {self.__pdf_page_index}, raw data: {page_data}")
-            raise ValueError(f"RTSID not found in page no. {self.__pdf_page_index}, raw data: {page_data}")
-        result_start_index = search_start_index.end()
-
-        raw_result = page_data[result_start_index:].strip()
-        students_raw_result_list = self.__get_students_raw_result_list(raw_result)
-
-        for student_raw_result in students_raw_result_list:
+        
+        student_index = 1
+        while student_index < len(result_table) and result_table[student_index][1]:
             self.__students_result_list.append(DEFAULT_STUDENT_RESULT.copy())
             self.__students_result_index += 1
-            await self.__extract_student_result(student_raw_result)
+            await self.__extract_student_result(
+                result_table[student_index],
+                result_table[student_index + 1],
+                result_table[student_index + 2]
+            )
+            student_index += 3
     
-    def __get_students_raw_result_list(self, raw_result: str) -> list[str]:
-        """
-        It will divide raw result into individual student result list
-        """
-
-        result_list = []
-        start_index = 0
-        roll_nums_iter = re.finditer(r'\b\d{11}\b', raw_result)
-
-        for roll_num_iter in roll_nums_iter:
-            end_index = roll_num_iter.start()
-            if end_index == 0:
-                continue
-            result_list.append(raw_result[start_index: end_index])
-            start_index = end_index
-        result_list.append(raw_result[start_index: ])
-        return result_list
-    
-    async def __extract_student_result(self, raw_student_data: str):
+    async def __extract_student_result(
+            self,
+            student_n_subject_detail: list[str],
+            student_int_ext_marks: list[str],
+            student_total_marks_n_grade: list[str]
+        ):
         """
         It will divide student result into student detail and student marks, and then parse them individually
         """
 
-        # Getting index of where result actually starts
-        search_result_start_index = re.search(r'SchemeID:\s+\d{12}\s+', raw_student_data)
-        if not search_result_start_index:
-            parser_logger.error(f"SchemeID not found in page no. {self.__pdf_page_index}, raw data: {raw_student_data}")
-            raise ValueError(f"SchemeID not found in page no. {self.__pdf_page_index}, raw data: {raw_student_data}")
-        result_start_index = search_result_start_index.end()
-
-        student_detail = raw_student_data[:result_start_index].strip()
-        student_marks = raw_student_data[result_start_index:].strip()
-
-        self.__extract_student_detail(student_detail)
-        await self.__extract_student_marks(student_marks)
+        self.__extract_student_detail(student_n_subject_detail[1])
+        await self.__extract_student_marks(
+            student_n_subject_detail,
+            student_int_ext_marks,
+            student_total_marks_n_grade
+        )
     
     def __extract_student_detail(self, raw_student_detail: str):
         """
@@ -347,7 +320,7 @@ class IPU_Result_Parser:
         """
 
         student_detail_regex_pattern = r'(\d{11})\s+(.+?)\s+SID:'
-        student_detail_regex_search = re.search(student_detail_regex_pattern, raw_student_detail)
+        student_detail_regex_search = re.match(student_detail_regex_pattern, raw_student_detail)
 
         student_roll_num = student_detail_regex_search.group(1).strip()
         student_name = student_detail_regex_search.group(2).strip()
@@ -356,17 +329,42 @@ class IPU_Result_Parser:
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
         self.__students_result_list[self.__students_result_index]['name'] = student_name
 
-    async def __extract_student_marks(self, raw_student_marks: str):
+    async def __extract_student_marks(
+        self,
+        student_n_subject_detail : list[str],
+        student_int_ext_marks : list[str],
+        student_total_marks_n_grade : list[str]
+    ):
         """
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        student_mark_list = self.__get_student_marks_list(raw_student_marks)
+        regexSubjectID = r'(.+)\(.+?\)' # Subject ID and Credit
+        regexGrade = r'\d+\s*\(([ABCFPO]\+?)\)'
+        subject_start_index = 2
         student_grade_list = []
+        while subject_start_index < len(student_n_subject_detail):
+            if not student_n_subject_detail[subject_start_index]:   # Maybe result maker skipped one block
+                subject_start_index += 2
+                continue
 
-        for student_mark in student_mark_list:
-            grade = self.__extract_student_score(student_mark)
+            subject_id_match = re.match(regexSubjectID, student_n_subject_detail[subject_start_index])
+            if not subject_id_match:
+                parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
+                raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
+            subject_id = subject_id_match.group(1).strip()
+            
+            grade = 'F' # If no match found means, it's fail
+            grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
+            if grade_match:
+                grade = grade_match.group(1).strip()
+            
+            internal_marks = self.__get_int_val(student_int_ext_marks[subject_start_index])
+            external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
+
+            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
             student_grade_list.append(grade)
+            subject_start_index += 2
         
         if all(grade == 'O' for grade in student_grade_list):
             parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
@@ -385,42 +383,3 @@ class IPU_Result_Parser:
             except Exception as err:
                 parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
                 parser_logger.error(err)
-    
-    def __get_student_marks_list(self, raw_student_marks: str) -> list[str]:
-        """
-        It will divide student marks into individual subject marks list
-        """
-
-        student_mark_list = []
-        end_index = 0
-        subject_ids_iter = re.finditer(r'\d{6}', raw_student_marks)
-
-        for subject_id_iter in subject_ids_iter:
-            start_index = end_index
-            end_index = subject_id_iter.start()
-            if end_index == 0:
-                continue
-            student_mark_list.append(raw_student_marks[start_index: end_index].strip())
-        student_mark_list.append(raw_student_marks[end_index: ].strip())
-        return student_mark_list
-    
-    def __extract_student_score(self, raw_student_score: str) -> str:
-        """
-        It will parse student marks like subject id, subject credit, internal marks, external marks, total marks and grade. Also it returns grade
-        """
-
-        student_score_regex_match = re.match(r'(\d{6})\((\d{1,2})\)\s+([0-9ACD-]+)\s+([0-9ACD]+)\s+([0-9ACD]+)(?:\(([ABCFPO]\+?)\))?', raw_student_score)
-
-        subject_id = student_score_regex_match.group(1)
-        subject_credit = self.__get_int_val(student_score_regex_match.group(2))
-        internal_marks = self.__get_int_val(student_score_regex_match.group(3))
-        external_marks = self.__get_int_val(student_score_regex_match.group(4))
-        total_marks = self.__get_int_val(student_score_regex_match.group(5))
-        grade = student_score_regex_match.group(6)
-        if grade == None:
-            grade = 'F'
-
-        # Adding student marks to list
-        self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
-
-        return grade

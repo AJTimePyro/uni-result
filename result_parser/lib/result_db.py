@@ -568,7 +568,8 @@ class Result_DB(DB):
         subject_credit: int,
         max_internal_marks: int,
         max_external_marks: int,
-        passing_marks: int
+        passing_marks: int,
+        max_marks: int
     ):
         """
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
@@ -586,6 +587,7 @@ class Result_DB(DB):
                         "subject_credit": subject_credit,
                         "max_internal_marks": max_internal_marks,
                         "max_external_marks": max_external_marks,
+                        "max_total_marks": max_marks,
                         "passing_marks": passing_marks,
                         "university_id": self.__uni_document["_id"]
                     }
