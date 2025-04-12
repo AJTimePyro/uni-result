@@ -436,9 +436,15 @@ class Result_DB(DB):
         # Function to extract marks and grades
         def extract_marks_and_grade(s):
             try:
-                values = literal_eval(s)  # Convert string list to actual list
-                return np.sum(values[:-1]), values[-1]  # Sum of marks, last element is grade
-            except:
+                if isinstance(s, str):
+                    values = literal_eval(s)  # Convert string list to actual list
+                    return np.sum(values[:-1]), values[-1]  # Sum of marks, last element is grade
+                elif isinstance(s, list):
+                    return np.sum(s[:-1]), s[-1]
+                else:
+                    raise Exception("Invalid data type")
+            except Exception as e:
+                print(e)
                 return np.nan, np.nan  # Handle missing or malformed data
 
         # Identify relevant subject columns
