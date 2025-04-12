@@ -444,9 +444,8 @@ class Result_DB(DB):
                 elif isinstance(s, list):
                     return np.sum(s[:-1]), s[-1]
                 else:
-                    raise Exception("Invalid data type")
+                    raise Exception(f"Invalid data type, expected str or list, got {type(s)}, value: {s}")
             except Exception as e:
-                print(e)
                 return np.nan, np.nan  # Handle missing or malformed data
 
         # Identify relevant subject columns

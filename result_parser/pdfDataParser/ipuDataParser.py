@@ -37,6 +37,7 @@ class IPU_Result_Parser:
     __students_result_index: int
     __starting_session: int
     __res_db: Result_DB
+    __save_link_metadata_param: dict
 
     def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
@@ -50,6 +51,7 @@ class IPU_Result_Parser:
         self.__students_result_index = -1
         self.__starting_session = session_start
         self.__res_db = None
+        self.__save_link_metadata_param = dict()
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -64,8 +66,8 @@ class IPU_Result_Parser:
         if not self.__skip_till_get_subjects_list():
             return
         
-        first_page, page_table = self.__get_next_page()
-        await self.__start_subjects_parser(first_page, page_table)
+        # first_page, page_table = self.__get_next_page()
+        # await self.__start_subjects_parser(first_page, page_table)
 
         while True:
             page_data = self.__get_next_page()
@@ -85,19 +87,20 @@ class IPU_Result_Parser:
             else:
                 await self.__start_student_results_parser(page_table)
     
-    async def __storing_result(self):
+    async def __storing_result(self):        
         if len(self.__students_result_list) == 0:
             parser_logger.warning("No results to store, skipping it...")
-            return
-        
-        parser_logger.info("Storing and uploading results...")
-        await self.__res_db.store_and_upload_result(
-            student_result_list = self.__students_result_list
-        )
+        else:
+            parser_logger.info("Storing and uploading results...")
+            await self.__res_db.store_and_upload_result(
+                student_result_list = self.__students_result_list
+            )
 
         # Clearing previous results
         self.__students_result_list.clear()
         self.__students_result_index = -1
+        self.__res_db.reset_subject_data_list()
+        self.__save_link_metadata_param.clear()
     
     def __get_next_page(self) -> tuple[str, list[list[str]]] | None:
         """
@@ -125,8 +128,9 @@ class IPU_Result_Parser:
 
         batch = self.__peek_to_get_batch()
         if batch == 0:
-            return None
+            pass
         elif batch < self.__starting_session:
+            parser_logger.error(f"Batch year {batch} is less than starting session year {self.__starting_session}")
             raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
@@ -233,7 +237,6 @@ class IPU_Result_Parser:
         It will divide subjects data into individual subject and then parse each subject
         """
 
-        self.__res_db.reset_subject_data_list()
         paper_id_index = 0
         if not re.match(r'paper\s*id', raw_subjects_table[0][0].lower()):   # Checking if subjects data starts from 0 or 1, as paper id index will be the starting index of subject data
             paper_id_index = 1
@@ -257,37 +260,50 @@ class IPU_Result_Parser:
         """
 
         parser_logger.info("Found subject list, parsing it...")
-
-        # Parsing exam meta data as well as subjects data
-        try:
-            meta_data = self.__exam_meta_data_parser(page_data)
-            if meta_data is None:
-                parser_logger.warning("Next page is also subject list, skipping this page...")
-                return
-        except OldSessionException as err:
-            parser_logger.warning(err.message + " ,Skipping pages till finding new subject list...")
+        sub_id_list = await self.__subjects_data_parser(page_table)
+        if not sub_id_list:
+            print("sub_id_list is None", sub_id_list)
             self.__skip_till_get_subjects_list()
             return
-        
-        self.__tmp_meta_data = meta_data
 
-        subject_id_list = await self.__subjects_data_parser(page_table)
-        if subject_id_list is None:
-            self.__skip_till_get_subjects_list()
-            return
-        
-        await self.__res_db.link_all_metadata(
-            subject_ids = subject_id_list,
-            degree_id = meta_data['degree_code'],
-            degree_name = meta_data['degree_name'],
-            batch = meta_data['batch'],
-            college_id = meta_data['college_code'],
-            college_name = meta_data['college_name'],
-            semester_num = meta_data['semester_num'],
-            is_evening_shift = meta_data['is_evening_shift']
-        )
-        parser_logger.info("Subject list parsed successfully")
-        parser_logger.info("Now parsing student results...")
+        meta_data = self.__exam_meta_data_parser(page_data)
+        if not (self.__save_link_metadata_param and (
+            meta_data['degree_code'] == self.__save_link_metadata_param['degree_id'] and
+            meta_data['college_code'] == self.__save_link_metadata_param['college_id'] and
+            meta_data['semester_num'] == self.__save_link_metadata_param['semester_num'] and
+            meta_data['is_evening_shift'] == self.__save_link_metadata_param['is_evening_shift']
+        )):
+            self.__save_link_metadata_param = {
+                "subject_ids" : sub_id_list,
+                "degree_id" : meta_data['degree_code'],
+                "degree_name" : meta_data['degree_name'],
+                "batch" : meta_data['batch'],
+                "college_id" : meta_data['college_code'],
+                "college_name" : meta_data['college_name'],
+                "semester_num" : meta_data['semester_num'],
+                "is_evening_shift" : meta_data['is_evening_shift']
+            }
+        else:
+            self.__save_link_metadata_param['subject_ids'].extend(sub_id_list)
+            self.__save_link_metadata_param['batch'] = meta_data['batch']
+
+        if self.__save_link_metadata_param['batch'] == 0:
+            parser_logger.info("Next page is also subject list, going to parse it as well...")
+        else:
+            if self.__save_link_metadata_param['batch'] == 0:
+                raise ValueError("Batch number is not found in metadata")
+            await self.__res_db.link_all_metadata(
+                subject_ids = self.__save_link_metadata_param['subject_ids'],
+                degree_id = self.__save_link_metadata_param['degree_id'],
+                degree_name = self.__save_link_metadata_param['degree_name'],
+                batch = self.__save_link_metadata_param['batch'],
+                college_id = self.__save_link_metadata_param['college_id'],
+                college_name = self.__save_link_metadata_param['college_name'],
+                semester_num = self.__save_link_metadata_param['semester_num'],
+                is_evening_shift = self.__save_link_metadata_param['is_evening_shift']
+            )
+            parser_logger.info("Subject list parsed successfully")
+            parser_logger.info("Now parsing student results...")
     
     async def __start_student_results_parser(self, result_table: list[list[str]]):
         """
@@ -336,6 +352,22 @@ class IPU_Result_Parser:
         # Adding student detail to list
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
         self.__students_result_list[self.__students_result_index]['name'] = student_name
+    
+    def __extract_subject_id(self, raw_subject_id_str: str):
+        """
+        It will extract subject id from raw subject id string
+        """
+
+        # Normalize whitespace
+        raw_subject_id_str = re.sub(r'\s+', ' ', raw_subject_id_str).strip()
+
+        # Extract part before credit
+        credit_match = re.search(r'\((\d+)\)', raw_subject_id_str)
+        subject_part = raw_subject_id_str[:credit_match.start()] if credit_match else raw_subject_id_str
+
+        # Normalize subject code: remove duplicate dashes, trim spaces
+        subject_code = subject_part.replace(' ', '')
+        return subject_code
 
     async def __extract_student_marks(
         self,
@@ -347,7 +379,6 @@ class IPU_Result_Parser:
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        regexSubjectID = r'(.+)\(.+?\)' # Subject ID and Credit
         regexGrade = r'\d+\s*\(([ABCFPO]\+?)\)'
         subject_start_index = 2
         student_grade_list = []
@@ -355,14 +386,18 @@ class IPU_Result_Parser:
             if not student_n_subject_detail[subject_start_index]:   # Maybe result maker skipped one block
                 subject_start_index += 2
                 continue
-
-            subject_id_match = re.match(regexSubjectID, student_n_subject_detail[subject_start_index])
-            if not subject_id_match:
+            
+            subject_id = self.__extract_subject_id(student_n_subject_detail[subject_start_index])
+            if not subject_id:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
-            subject_id = subject_id_match.group(1).strip()
             if not subject_id.isdigit():
-                subject_id = self.__res_db.subject_id_code_map[standardize_subject_code(subject_id)]
+                subject_id = standardize_subject_code(subject_id)
+                if self.__res_db.subject_id_code_map.get(subject_id, None) is None:
+                    parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
+                    raise ValueError(f"Subject ID not found in database, raw data: {subject_id}")
+                else:
+                    subject_id = self.__res_db.subject_id_code_map[subject_id]
             
             grade = 'F' # If no match found means, it's fail
             grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
@@ -385,10 +420,10 @@ class IPU_Result_Parser:
                     self.__students_result_list[self.__students_result_index]['roll_num'],
                     self.__students_result_list[self.__students_result_index]['name'],
                     UNIVERSITY_NAME,
-                    self.__tmp_meta_data['batch'],
-                    self.__tmp_meta_data['college_name'],
-                    self.__tmp_meta_data['college_code'],
-                    self.__tmp_meta_data['semester_num']
+                    self.__save_link_metadata_param['batch'],
+                    self.__save_link_metadata_param['college_name'],
+                    self.__save_link_metadata_param['college_id'],
+                    self.__save_link_metadata_param['semester_num']
                 )
             except Exception as err:
                 parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
