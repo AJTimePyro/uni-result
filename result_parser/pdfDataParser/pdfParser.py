@@ -5,6 +5,10 @@ from result_parser.lib.utils import is_valid_url
 from io import BytesIO
 import os
 import requests
+import logging
+
+# Suppress only pdfminer warnings
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 class PDFParser:
     __stream_content : str | None

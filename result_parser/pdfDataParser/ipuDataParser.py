@@ -264,8 +264,13 @@ class IPU_Result_Parser:
         if not sub_id_list:
             self.__skip_till_get_subjects_list()
             return
-
-        meta_data = self.__exam_meta_data_parser(page_data)
+        
+        try:
+            meta_data = self.__exam_meta_data_parser(page_data)
+        except OldSessionException:
+            self.__skip_till_get_subjects_list()
+            return
+        
         if not (self.__save_link_metadata_param and (
             meta_data['degree_code'] == self.__save_link_metadata_param['degree_id'] and
             meta_data['college_code'] == self.__save_link_metadata_param['college_id'] and
@@ -288,6 +293,12 @@ class IPU_Result_Parser:
 
         if self.__save_link_metadata_param['batch'] == 0:
             parser_logger.info("Next page is also subject list, going to parse it as well...")
+            page_data = self.__get_next_page()
+            if not page_data:
+                parser_logger.info("No more pages to parse, now parsing student results...")
+                return
+            parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
+            await self.__start_subjects_parser(page_data[0], page_data[1])
         else:
             if self.__save_link_metadata_param['batch'] == 0:
                 raise ValueError("Batch number is not found in metadata")
