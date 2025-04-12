@@ -225,11 +225,12 @@ class IPU_Result_Parser:
         subject_id = raw_subject_data[paper_id_index].strip()
         subject_code = raw_subject_data[paper_id_index + 1].strip()
         subject_name = raw_subject_data[paper_id_index + 2].strip()
-        subject_credit = self.__get_int_val(raw_subject_data[paper_id_index + 3])
-
-        if subject_credit == 0:
-            parser_logger.warning(f"Credit is empty, Let's skip it...")
+        
+        subject_credit_search = re.search(r'(\d{1,2})$', raw_subject_data[paper_id_index + 3])
+        if subject_credit_search is None:
+            parser_logger.warning(f"Credit is empty, Let's skip it, raw data: {raw_subject_data}")
             return False
+        subject_credit = self.__get_int_val(subject_credit_search.group(1))
 
         if subject_id == '' or subject_code == '' or subject_name == '':
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
@@ -363,11 +364,14 @@ class IPU_Result_Parser:
         It will parse student detail like student roll number and student name
         """
 
-        student_detail_regex_pattern = r'(\d{11})\s+(.+?)\s+SID:'
-        student_detail_regex_search = re.match(student_detail_regex_pattern, raw_student_detail)
+        student_detail_regex_pattern = r'(\d+)\s+(.+?)\s+SID:'
+        student_detail_regex_search = re.match(student_detail_regex_pattern, raw_student_detail, re.DOTALL)
+        if not student_detail_regex_search:
+            parser_logger.error(f"Error while parsing student detail, {raw_student_detail}")
+            raise ValueError("Error while parsing student detail")
 
         student_roll_num = student_detail_regex_search.group(1).strip()
-        student_name = student_detail_regex_search.group(2).strip()
+        student_name = student_detail_regex_search.group(2).replace('\n', ' ').strip()
 
         # Adding student detail to list
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
