@@ -44,10 +44,11 @@ def standardize_subject_code(code):
     It will standardize the subject code
     """
 
-    cleaned = re.sub(r'[\s\-]+', '', code.strip())
-    match = re.match(r'^([A-Za-z]+)(\d+)$', cleaned)
+    code = code.strip()
+    match = re.match(r'^([A-Za-z0-9\s\-\(\)\.\/]+?)(\d+)$', code)
     if match:
-        prefix = match.group(1).upper()
-        suffix = match.group(2)
-        return f"{prefix}-{suffix}"
+        raw_prefix = match.group(1)
+        number = match.group(2)
+        cleaned_prefix = re.sub(r'[^A-Za-z0-9\(\)]', '', raw_prefix).upper()
+        return f"{cleaned_prefix}-{number}"
     return code
