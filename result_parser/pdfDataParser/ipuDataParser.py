@@ -262,7 +262,6 @@ class IPU_Result_Parser:
         parser_logger.info("Found subject list, parsing it...")
         sub_id_list = await self.__subjects_data_parser(page_table)
         if not sub_id_list:
-            print("sub_id_list is None", sub_id_list)
             self.__skip_till_get_subjects_list()
             return
 
@@ -417,8 +416,7 @@ class IPU_Result_Parser:
             try:
                 # Adding student to hall of fame
                 await self.__res_db.add_hall_of_fame_student(
-                    self.__students_result_list[self.__students_result_index]['roll_num'],
-                    self.__students_result_list[self.__students_result_index]['name'],
+                    self.__students_result_list[self.__students_result_index],
                     UNIVERSITY_NAME,
                     self.__save_link_metadata_param['batch'],
                     self.__save_link_metadata_param['college_name'],

@@ -683,8 +683,7 @@ class Result_DB(DB):
     
     async def add_hall_of_fame_student(
         self,
-        roll_num: str,
-        name: str,
+        student_detail: dict[str, str | list[int]],
         university_name: str,
         batch: int,
         college_name: str,
@@ -695,13 +694,14 @@ class Result_DB(DB):
         It will add student to hall of fame, those who achieved 10cgpa
         """
 
-        result_db_logger.info(f"Adding student {roll_num} - {name} to hall of fame...")
-        await self.__hall_of_fame_collec.insert_one({
-            "roll_num": roll_num,
-            "name": name,
+        result_db_logger.info(f"Adding student {student_detail['roll_num']} - {student_detail['name']} to hall of fame...")
+        hall_of_fame_entry = {
             "university_name": university_name,
             "batch": batch,
             "college_name": college_name,
             "college_id": college_id,
             "semester_num": semester_num
-        })
+        }
+        hall_of_fame_entry.update(student_detail)
+        
+        await self.__hall_of_fame_collec.insert_one(hall_of_fame_entry)
