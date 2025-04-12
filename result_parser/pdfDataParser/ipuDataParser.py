@@ -68,11 +68,12 @@ class IPU_Result_Parser:
         await self.__start_subjects_parser(first_page, page_table)
 
         while True:
-            next_page, page_table = self.__get_next_page()
-            if next_page is None:
+            page_data = self.__get_next_page()
+            if page_data is None:
                 parser_logger.info("No more pages to parse, storing remaining results...")
                 await self.__storing_result()
                 break
+            next_page, page_table = page_data
 
             parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
 
