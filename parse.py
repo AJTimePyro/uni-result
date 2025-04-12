@@ -74,11 +74,15 @@ class Parse:
             return
         
         input_index = input("Enter the index of the file to start from(default empty): ")
+        page_num = 1
         try:
             if not input_index:
                 input_index = 0
             else:
                 input_index = int(input_index)
+                page_str = input("Enter the page number to start from(default 1): ")
+                if page_str and page_str.isdigit():
+                    page_num = int(page_str)
         except ValueError:
             automation_logger.error("Invalid index")
             return
@@ -95,9 +99,10 @@ class Parse:
             startTime = time.time()
             print(f"Parsing file index no. {input_index} {json_data['title']}...")
             try:
-                await self.parse_func(pdf_url=json_data["link"])
+                await self.parse_func(pdf_url=json_data["link"], page_num = page_num)
             except Exception as err:
                 error_message = {
+                    "index": input_index,
                     "title": json_data['title'],
                     "link": json_data['link'],
                     "error": str(err),
@@ -112,6 +117,8 @@ class Parse:
             else:
                 endTime = time.time()
                 automation_logger.info(f"Successfully parsed pdf file index no. {input_index}, pdf name: {json_data['title']}, pdf link: {json_data['link']}, time taken: {endTime - startTime} seconds")
+            finally:
+                page_num = 1
             input_index += 1
 
 if __name__ == "__main__":
