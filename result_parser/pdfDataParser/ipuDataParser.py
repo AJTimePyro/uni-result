@@ -38,14 +38,14 @@ class IPU_Result_Parser:
     __starting_session: int
     __res_db: Result_DB
 
-    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020):
+    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
         
         # Initializing values
         self.__pdf_pages_list = pdf_pages_list
-        self.__pdf_page_index = -1
+        self.__pdf_page_index = page_to_start - 2   # default -1
         self.__students_result_list = list()
         self.__students_result_index = -1
         self.__starting_session = session_start

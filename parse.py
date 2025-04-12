@@ -30,7 +30,7 @@ class Parse:
             else:
                 print("Invalid option")
     
-    async def parse_func(self, pdf_path: str = '', pdf_url: str = ''):
+    async def parse_func(self, pdf_path: str = '', pdf_url: str = '', page_num : int = 1):
         pdfParser = PDFParser(
             filePath = pdf_path,
             pdf_url = pdf_url
@@ -40,12 +40,25 @@ class Parse:
             automation_logger.error(f"No enough content found in pdf {pdf_path if pdf_path else pdf_url}")
             return
         
-        parser = IPU_Result_Parser(pdfParser.pdf_pages_list, 2020)
+        parser = IPU_Result_Parser(
+            pdfParser.pdf_pages_list,
+            2020,
+            page_to_start = page_num
+        )
         await parser.start()
     
     async def manual_parse(self):
         pdf_path = input("Enter the path to the PDF file: ")
-        await self.parse_func(pdf_path)
+        pdf_page_num = input("Enter the page number to start from(default 1): ")
+        try:
+            if not pdf_page_num:
+                pdf_page_num = 1
+            else:
+                pdf_page_num = int(pdf_page_num)
+        except ValueError:
+            automation_logger.error("Invalid page number")
+            return
+        await self.parse_func(pdf_path, page_num = pdf_page_num)
     
     async def auto_parse(self):
         json_data = input("Enter the json file path: ")

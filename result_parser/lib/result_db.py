@@ -621,11 +621,11 @@ class Result_DB(DB):
 
         # Create filename for this result
         filename = f"{self.__semester_num:02d}.csv"
-        file_path = os.path.join(
-            ENV.LOCAL_RESULT_FOLDER_PATH,
-            self.__final_folder_path_tracker,
-            filename
-        )
+        folder_path = os.path.join(ENV.LOCAL_RESULT_FOLDER_PATH, self.__final_folder_path_tracker)
+        file_path = os.path.join(folder_path, filename)
+
+        # Create folder path if not exists
+        os.makedirs(folder_path, exist_ok=True)
 
         # Convert results to dataframe
         student_result_df = pd.DataFrame(student_result_list, dtype=str)
