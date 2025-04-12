@@ -192,11 +192,11 @@ class IPU_Result_Parser:
         It will skip all the pages till it finds subject list, if no page contains subject list then it will return False
         """
 
-        next_page, _ = self.__get_next_page()
-        while next_page is not None and not self.__is_page_contains_subject_list(next_page):
-            next_page, _ = self.__get_next_page()
+        page_data = self.__get_next_page()
+        while page_data is not None and not self.__is_page_contains_subject_list(page_data[0]):
+            page_data = self.__get_next_page()
         
-        if next_page is None:
+        if page_data is None:
             parser_logger.error("Pdf doesn't contain subject list at all.")
             return False
         
@@ -213,9 +213,13 @@ class IPU_Result_Parser:
         subject_name = raw_subject_data[paper_id_index + 2].strip()
         subject_credit = self.__get_int_val(raw_subject_data[paper_id_index + 3])
 
-        if subject_credit == 0 or subject_id == '' or subject_code == '' or subject_name == '':
-            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+        if subject_credit == 0:
+            parser_logger.warning(f"Credit is empty, Let's skip it...")
             return False
+
+        if subject_id == '' or subject_code == '' or subject_name == '':
+            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            raise ValueError(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
         
         subject_passing_marks = self.__get_int_val(raw_subject_data[-1])
         subject_max_marks = self.__get_int_val(raw_subject_data[-2])
@@ -241,8 +245,7 @@ class IPU_Result_Parser:
                 paper_id_index
             )
             if subject_res is False:
-                parser_logger.error(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subjects_table}")
-                raise ValueError(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subjects_table}")
+                return None
             
             subject_id, subject_doc_id = subject_res
             subject_list.append((subject_id, subject_doc_id))
@@ -269,6 +272,10 @@ class IPU_Result_Parser:
         self.__tmp_meta_data = meta_data
 
         subject_id_list = await self.__subjects_data_parser(page_table)
+        if subject_id_list is None:
+            self.__skip_till_get_subjects_list()
+            return
+        
         await self.__res_db.link_all_metadata(
             subject_ids = subject_id_list,
             degree_id = meta_data['degree_code'],
