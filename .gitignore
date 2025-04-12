@@ -10,3 +10,6 @@ __pycache__
 
 # Version setup
 .python-version
+
+# Dangerous File
+clean.py
