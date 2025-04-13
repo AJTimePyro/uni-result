@@ -502,11 +502,13 @@ class Result_DB(DB):
         for col in subject_cols:
             if col not in original_df.columns:
                 original_df[col] = np.nan
+                original_df[col] = original_df[col].astype(object)
 
         # Parse subject columns in both dataframes
         for col in subject_cols:
             new_df[col] = new_df[col].apply(parse_subject)
             original_df[col] = original_df[col].apply(parse_subject)
+            original_df[col] = original_df[col].astype(object)
         
         # Identify reappearing/rechecking and new students
         students_for_update = new_df.index.intersection(original_df.index)
