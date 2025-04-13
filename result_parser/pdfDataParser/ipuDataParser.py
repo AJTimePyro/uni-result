@@ -217,14 +217,33 @@ class IPU_Result_Parser:
         self.__pdf_page_index -= 1
         return True
     
+    def __self_cleaning_subject_code(self, raw_subject_code: str) -> str:
+        """
+        It will remove all the extra spaces from subject code
+        """
+
+        # Fix line breaks inside words (e.g., '20\n1' -> '201', 'AV\nV' -> 'AVV')
+        text = re.sub(r'(?<=\w)[\s\n]+(?=\w)', '', raw_subject_code)
+
+        # Pattern pattern:
+        # - Starts with letters
+        # - Allows dots, dashes, slashes, parentheses and ampersand
+        # - Allows optional space or whitespaces before number
+        pattern = r'[A-Z][A-Z.\-/()&]+\s*\d+'
+
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        return match.group().replace(' ', '') if match else None
+    
     async def __subject_parser(self, raw_subject_data: list[str], paper_id_index: int):
         """
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
 
         subject_id = raw_subject_data[paper_id_index].strip()
-        subject_code = raw_subject_data[paper_id_index + 1].strip()
         subject_name = raw_subject_data[paper_id_index + 2].strip()
+
+        raw_subject_code = raw_subject_data[paper_id_index + 1].strip()
+        subject_code = self.__self_cleaning_subject_code(raw_subject_code)
         
         subject_credit_search = re.search(r'(\d{1,2})$', raw_subject_data[paper_id_index + 3])
         if subject_credit_search is None:
@@ -416,6 +435,7 @@ class IPU_Result_Parser:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
             if not subject_id.isdigit():
+                subject_id = self.__self_cleaning_subject_code(subject_id)
                 subject_id = standardize_subject_code(subject_id)
                 if self.__res_db.subject_id_code_map.get(subject_id, None) is None:
                     parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
