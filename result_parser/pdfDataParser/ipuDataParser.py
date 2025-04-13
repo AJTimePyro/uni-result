@@ -247,13 +247,13 @@ class IPU_Result_Parser:
         
         subject_credit_search = re.search(r'(\d{1,2})$', raw_subject_data[paper_id_index + 3])
         if subject_credit_search is None:
-            parser_logger.warning(f"Credit is empty, Let's skip it, raw data: {raw_subject_data}")
+            parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
             return False
         subject_credit = self.__get_int_val(subject_credit_search.group(1))
 
-        if subject_id == '' or subject_code == '' or subject_name == '':
+        if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
-            raise ValueError(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            return None
         
         subject_passing_marks = self.__get_int_val(raw_subject_data[-1])
         subject_max_marks = self.__get_int_val(raw_subject_data[-2])
@@ -279,6 +279,8 @@ class IPU_Result_Parser:
             )
             if subject_res is False:
                 return None
+            elif subject_res is None:   # Just skipping this subject
+                continue
             
             subject_id, subject_doc_id = subject_res
             subject_list.append((subject_id, subject_doc_id))
