@@ -15,11 +15,11 @@ export default function CosmicNavbar() {
             key={i}
             className="absolute bg-white opacity-50 rounded-full animate-twinkle"
             style={{
-              left: ${Math.random() * 100}%,
-              top: ${Math.random() * 100}%,
-              width: ${Math.random() * 3}px,
-              height: ${Math.random() * 3}px,
-              animationDelay: ${Math.random() * 5}s,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              width: `${Math.random() * 3}px`,
+              height: `${Math.random() * 3}px`,
+              animationDelay: `${Math.random() * 5}s`,
             }}
           />
         ))}
