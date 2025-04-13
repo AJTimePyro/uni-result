@@ -134,7 +134,7 @@ class IPU_Result_Parser:
         It will parse Metadata about result, like degree code, degree name, semester number, college code, college name and batch year; and return in dictionary. If page is supposed to be skipped, then it return False else True
         """
 
-        regexStrForExamMetaData = r'(?:Prg\.|Programme) Code:\s*(\d{3})\s+Programme(?: Name)?\s*:\s*(.+)\s+SchemeID:\s*\d+\s+Sem\./(?:Year|Annual):\s*(.+?)\s+(?:SEMESTER|ANNUAL).*\n.*Institution Code:\s*\'?(\d{3})\'?\s+Institution:\s+(.+)\n'
+        regexStrForExamMetaData = r'(?:Prg\.|Programme) Code:\s*(\d{3})\s+Programme(?: Name)?\s*:\s*(.+)\s+SchemeID:\s*\d+\s+Sem\./(?:Year|Annual):\s*(.+?)\s+(?:SEMESTER|ANNUAL|TRIMESTER).*\n.*Institution Code:\s*\'?(\d{3})\'?\s+Institution:\s+(.+)\n'
 
         batch = self.__peek_to_get_batch()
         if batch == 0:
