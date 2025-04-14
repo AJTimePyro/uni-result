@@ -97,7 +97,7 @@ class Parse:
 
         for json_data in json_content[input_index:]:
             startTime = time.time()
-            print(f"Parsing file index no. {input_index} {json_data['title']}...")
+            automation_logger.info(f"Parsing file index no. {input_index}, pdf url: {json_data['link']}, pdf name: {json_data['title']}...")
             try:
                 await self.parse_func(pdf_url=json_data["link"], page_num = page_num)
             except Exception as err:
@@ -108,7 +108,7 @@ class Parse:
                     "error": str(err),
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                 }
-                automation_logger.error(f"Error while parsing pdf file index no. {input_index}, pdf name: {json_data['title']}", exc_info=True)
+                automation_logger.error(f"Error while parsing pdf file index no. {input_index}, pdf name: {json_data['title']} pdf link: {json_data['link']}", exc_info=True)
                 traceback.print_exc()
                 error_json_content.append(error_message)
                 with open(error_json_path, "w") as f:
