@@ -48,6 +48,7 @@ class IPU_Result_Parser:
     __starting_session: int
     __res_db: Result_DB
     __save_link_metadata_param: dict
+    __exam_type: str
 
     def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
@@ -62,6 +63,7 @@ class IPU_Result_Parser:
         self.__starting_session = session_start
         self.__res_db = None
         self.__save_link_metadata_param = dict()
+        self.__exam_type = ''
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -209,6 +211,12 @@ class IPU_Result_Parser:
             batch_searched = re.search(r'Batch:\s(\d{4})', next_page)
             batch_str = batch_searched.group(1)
             batch = self.__get_int_val(batch_str)
+
+            exam_type_searched = re.search(r'Examination:\s*(\w+)', next_page, re.IGNORECASE)
+            if exam_type_searched is None:
+                parser_logger.error(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
+                raise ValueError(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
+            self.__exam_type = exam_type_searched.group(1).strip()
 
         self.__pdf_page_index -= 1
         return batch
@@ -470,18 +478,21 @@ class IPU_Result_Parser:
             subject_start_index += 2
         
         if all(grade == 'O' for grade in student_grade_list):
-            parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
+            if self.__exam_type.lower() == 'regular':
+                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
 
-            try:
-                # Adding student to hall of fame
-                await self.__res_db.add_hall_of_fame_student(
-                    self.__students_result_list[self.__students_result_index],
-                    UNIVERSITY_NAME,
-                    self.__save_link_metadata_param['batch'],
-                    self.__save_link_metadata_param['college_name'],
-                    self.__save_link_metadata_param['college_id'],
-                    self.__save_link_metadata_param['semester_num']
-                )
-            except Exception as err:
-                parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
-                parser_logger.error(err)
+                try:
+                    # Adding student to hall of fame
+                    await self.__res_db.add_hall_of_fame_student(
+                        self.__students_result_list[self.__students_result_index],
+                        UNIVERSITY_NAME,
+                        self.__save_link_metadata_param['batch'],
+                        self.__save_link_metadata_param['college_name'],
+                        self.__save_link_metadata_param['college_id'],
+                        self.__save_link_metadata_param['semester_num']
+                    )
+                except Exception as err:
+                    parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
+                    parser_logger.error(err)
+            else:
+                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa, but maybe it's not his/her regular exam result")

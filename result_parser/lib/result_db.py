@@ -263,7 +263,7 @@ class Result_DB(DB):
             new_degree = await self.__degree_collec.insert_one({
                 "degree_id": degree_id,
                 "degree_name": degree_name,
-                "branch_name": branch_name,
+                "branch_name": branch_name if branch_name else 'GENERAL',
                 "colleges": list(),
                 "subjects": dict(),
                 "sem_results": dict(),  # key: sem_num, value: gdrive file id
