@@ -120,7 +120,7 @@ class IPU_Result_Parser:
         if len(self.__pdf_pages_list) == self.__pdf_page_index + 1:
             return None
         self.__pdf_page_index += 1
-        return self.__pdf_pages_list[self.__pdf_page_index].extract_text(), self.__pdf_pages_list[self.__pdf_page_index].extract_table()
+        return self.__pdf_pages_list[self.__pdf_page_index].extract_text_simple(), self.__pdf_pages_list[self.__pdf_page_index].extract_table()
     
     def __is_page_contains_subject_list(self, page_content: str) -> bool:
         """
