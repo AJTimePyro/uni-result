@@ -698,6 +698,7 @@ class Result_DB(DB):
         It will add student to hall of fame, those who achieved 10cgpa
         """
 
+        del student_detail["college_id"]
         result_db_logger.info(f"Adding student {student_detail['roll_num']} - {student_detail['name']} to hall of fame...")
         hall_of_fame_entry = {
             "university_name": university_name,
