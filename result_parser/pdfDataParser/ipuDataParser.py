@@ -495,4 +495,4 @@ class IPU_Result_Parser:
                     parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
                     parser_logger.error(err)
             else:
-                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa, but maybe it's not his/her regular exam result")
+                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa, but maybe it's not his/her regular exam result, so not adding to hall of fame, other details: {self.__students_result_list[self.__students_result_index]}")
