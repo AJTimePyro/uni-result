@@ -45,7 +45,7 @@ def standardize_subject_code(code):
     """
 
     code = code.strip()
-    match = re.match(r'^([A-Za-z0-9\s\-\(\)\.\/]+?)(\d+)$', code)
+    match = re.match(r'^([A-Za-z0-9\s\-\(\)\.\/]+?)(\d+(?:\.\d+)?)$', code)
     if match:
         raw_prefix = match.group(1)
         number = match.group(2)

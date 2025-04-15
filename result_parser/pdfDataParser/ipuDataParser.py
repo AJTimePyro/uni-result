@@ -175,6 +175,18 @@ class IPU_Result_Parser:
             'is_evening_shift': updated_college_name != college_name # Evening Shift have slightly different name(having extra spaces)
         }
     
+    def __get_float_val(self, val: str) -> float | int:
+        """
+        Return float value from given string, if string is not float then it will raise exception
+        """
+
+        if val.replace('.', '', 1).isdigit():
+            if '.'  in val:
+                return float(val.strip())
+            return int(val.strip())
+        else:
+            return 0
+    
     def __get_int_val(self, val: str) -> int:
         """
         Return integer value from given string, if string is not integer then it will raise exception
@@ -245,11 +257,11 @@ class IPU_Result_Parser:
         raw_subject_code = raw_subject_data[paper_id_index + 1].strip()
         subject_code = self.__self_cleaning_subject_code(raw_subject_code)
         
-        subject_credit_search = re.search(r'(\d{1,2})$', raw_subject_data[paper_id_index + 3])
+        subject_credit_search = re.search(r'(\d+(?:\.\d+)?)$', raw_subject_data[paper_id_index + 3])
         if subject_credit_search is None:
             parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
             return False
-        subject_credit = self.__get_int_val(subject_credit_search.group(1))
+        subject_credit = self.__get_float_val(subject_credit_search.group(1))
 
         if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
@@ -407,7 +419,7 @@ class IPU_Result_Parser:
         raw_subject_id_str = re.sub(r'\s+', ' ', raw_subject_id_str).strip()
 
         # Extract part before credit
-        credit_match = re.search(r'\((\d+)\)', raw_subject_id_str)
+        credit_match = re.search(r'\((\d+(?:\.\d+)?)\)', raw_subject_id_str)
         subject_part = raw_subject_id_str[:credit_match.start()] if credit_match else raw_subject_id_str
 
         # Normalize subject code: remove duplicate dashes, trim spaces

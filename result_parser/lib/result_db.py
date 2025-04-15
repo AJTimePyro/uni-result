@@ -575,7 +575,7 @@ class Result_DB(DB):
         subject_name: str,
         subject_code: str,
         subject_id: str,
-        subject_credit: int,
+        subject_credit: int | float,
         max_internal_marks: int,
         max_external_marks: int,
         passing_marks: int,
