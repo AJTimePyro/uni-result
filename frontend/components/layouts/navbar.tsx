@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { Sparkles, Rocket } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -79,15 +80,15 @@ export default function CosmicNavbar() {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex space-x-6 text-white items-center">
-          <Link href="/ranklist" className="hover:text-indigo-300 transition" onClick={handleLinkClick}>
+          <Link href="/ranklist" className="hover:text-indigo-300 transition">
             <Sparkles size={18} className="text-yellow-300 inline-block mr-1" />
             Rank List
           </Link>
-          <Link href="/results" className="hover:text-purple-300 transition" onClick={handleLinkClick}>
+          <Link href="/results" className="hover:text-purple-300 transition">
             <Sparkles size={18} className="text-green-300 inline-block mr-1" />
             My Results
           </Link>
-          <Link href="/contact" className="hover:text-pink-300 transition" onClick={handleLinkClick}>
+          <Link href="/contact" className="hover:text-pink-300 transition">
             <Sparkles size={18} className="text-red-300 inline-block mr-1" />
             Contact
           </Link>
@@ -97,7 +98,7 @@ export default function CosmicNavbar() {
       {/* Mobile Overlay */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-transparent bg-opacity-60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMenuOpen(false)}
         />
       )}
@@ -105,7 +106,7 @@ export default function CosmicNavbar() {
       {/* Mobile Menu */}
       <div
         className={clsx(
-          "fixed top-0 left-0 w-13/20 sm:w-1/2 h-full bg-[#0b0b1c] border-r border-indigo-700 p-6 space-y-6 transform transition-transform duration-300 md:hidden z-50 shadow-lg shadow-indigo-900",
+          "fixed top-0 left-0 w-13/20 sm:w-1/2 h-full bg-[#0b0b1c] p-10 space-y-6 transform transition-transform duration-300 md:hidden z-50 shadow-lg shadow-indigo-900",
           isMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
