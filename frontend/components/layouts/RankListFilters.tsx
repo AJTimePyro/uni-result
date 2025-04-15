@@ -81,7 +81,7 @@ const SessionYearDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedSessionYear.year}
             label="Session Year"
             onSelect={handleSelect}
@@ -136,7 +136,7 @@ const DegreeDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedDegree.degree_name}
             label="Degree"
             onSelect={handleSelect}
@@ -158,8 +158,12 @@ const BranchDropDown = memo(({
     setActiveDropDown,
     dropdownKey,
 }: BranchDropDownProps) => {
+    console.log(selectedDegree.branches)
     const options = useMemo(() =>
-        selectedDegree.branches.map((branch) => Object.keys(branch)[0]),
+        selectedDegree.branches.map(branch => {
+            const [key] = Object.keys(branch);
+            return `${branch[key][0]} - ${key}`;
+        }),
         [selectedDegree.branches]
     );
 
@@ -201,7 +205,7 @@ const BranchDropDown = memo(({
 
     const handleSelect = useCallback((value: string) => {
         const branchData = selectedDegree.branches.find(branch =>
-            Object.keys(branch)[0] === value
+            Object.keys(branch)[0] === value.split(" - ")[1]
         );
 
         if (branchData) {
@@ -223,7 +227,7 @@ const BranchDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedBranch.branch_name || ""}
             label="Branch"
             onSelect={handleSelect}
@@ -252,7 +256,7 @@ const CollegeDropDown = memo(({
         enabled: !!degreeID
     });
 
-    const options = useMemo(() => 
+    const options = useMemo(() =>
         data[0]?.length ? ["All", ...(data[0]?.map((c) => c.college_name) || [])] : [],
         [data]
     );
@@ -295,7 +299,7 @@ const CollegeDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedCollege.college_name}
             label="College"
             onSelect={handleSelect}
@@ -373,7 +377,7 @@ const ShiftDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedCollegeShift.shift}
             label="Shift"
             onSelect={handleSelect}
@@ -424,7 +428,7 @@ const SemesterDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options}
+            options={options.sort()}
             selectedValue={selectedSemester === 0 ? "" : selectedSemester.toString()}
             label="Semester"
             onSelect={handleSelect}

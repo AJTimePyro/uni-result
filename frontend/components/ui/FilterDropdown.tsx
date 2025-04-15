@@ -42,9 +42,9 @@ const RanklistFilterDropdown: React.FC<RanklistFilterDropdownProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     className="absolute z-20 mt-2 w-full bg-indigo-900 rounded-lg shadow-2xl border border-indigo-700 max-h-60 overflow-y-auto"
                 >
-                    {options.map((option) => (
+                    {options.map((option, index) => (
                         <div
-                            key={option}
+                            key={index}
                             onClick={() => onSelect(option)}
                             className="px-4 py-3 hover:bg-indigo-800 cursor-pointer border-b border-indigo-700/30 last:border-b-0"
                         >
