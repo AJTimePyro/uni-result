@@ -1,15 +1,12 @@
-import { useState } from "react";
-import StudentCard from "../layouts/StudentCard";
+import { Dispatch, SetStateAction, useState } from "react";
 
 interface RanklistTableProps {
-    subjects: Subject[];
     students: Student[];
+    setSelectedStudent: Dispatch<SetStateAction<Student | null>>
+    setIsModalOpen: Dispatch<SetStateAction<boolean>>
 }
 
-const RanklistTable: React.FC<RanklistTableProps> = ({ subjects, students }: RanklistTableProps) => {
-    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
+const RanklistTable: React.FC<RanklistTableProps> = ({ students, setSelectedStudent, setIsModalOpen }: RanklistTableProps) => {
     return (
         <div className="bg-indigo-900/30 rounded-2xl overflow-x-auto border border-indigo-700/50">
             <table className="w-full">
@@ -49,16 +46,6 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ subjects, students }: Ran
                     ))}
                 </tbody>
             </table>
-
-            {
-                isModalOpen &&
-                <StudentCard
-                    studentData={selectedStudent!}
-                    subjectsList={subjects}
-                    open={isModalOpen}
-                    setIsModalOpen={setIsModalOpen}
-                />
-            }
         </div>
     );
 };

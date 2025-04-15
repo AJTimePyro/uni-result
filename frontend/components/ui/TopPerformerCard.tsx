@@ -5,6 +5,7 @@ import CosmicOverlay from "../spaceProps/CosmicOverlay";
 interface TopPerformerCardProps {
     student: Student;
     rank: number;
+    showStudentModal: () => void;
 }
 
 interface StudentHeaderProps {
@@ -45,7 +46,7 @@ const StudentAchievementCard: React.FC<StudentHeaderProps> = ({ student }) => {
     );
 }
 
-const TopPerformerCard: React.FC<TopPerformerCardProps> = ({ student, rank }) => {
+const TopPerformerCard: React.FC<TopPerformerCardProps> = ({ student, rank, showStudentModal }) => {
     const getRankBadgeClass = (index: number): string => {
         switch (index) {
             case 1: return 'bg-yellow-500';
@@ -74,6 +75,7 @@ const TopPerformerCard: React.FC<TopPerformerCardProps> = ({ student, rank }) =>
                 stiffness: 100
             }}
             className="relative bg-gradient-to-br from-indigo-900/60 to-purple-900/60 rounded-2xl p-6 overflow-hidden border border-indigo-700/50 shadow-2xl"
+            onClick={showStudentModal}
         >
             <CosmicOverlay />
 

@@ -8,6 +8,7 @@ import TopPerformers from "../layouts/TopPerformers";
 import RanklistTable from "../ui/RanklistTable";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS, fetchRanklistResult } from "@/queries";
+import StudentCard from "../layouts/StudentCard";
 
 const mockRanklistData: Student[] = [
     {
@@ -55,6 +56,8 @@ export default function RankListClientSide() {
     const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
     const [shouldRefetch, setShouldRefetch] = useState(false)
     const [subjectData, setSubjectData] = useState<Subject[]>([])
+    const [studentModalOpen, setStudentModalOpen] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
     const { data, isSuccess, isFetching, refetch } = useQuery({
         queryKey: QUERY_KEYS.rankList(requestJson),
@@ -114,10 +117,20 @@ export default function RankListClientSide() {
                     Academic Cosmos Leaderboard
                 </motion.h1>
 
-                <TopPerformers topStudents={rankListResult.slice(0, 3)} />
+                <TopPerformers topStudents={rankListResult.slice(0, 3)} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
 
-                <RanklistTable subjects={subjectData} students={rankListResult} />
+                <RanklistTable students={rankListResult} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
             </div>
+
+            {
+                studentModalOpen &&
+                <StudentCard
+                    studentData={selectedStudent!}
+                    subjectsList={subjectData}
+                    open={studentModalOpen}
+                    setIsModalOpen={setStudentModalOpen}
+                />
+            }
         </div>
     )
 }
