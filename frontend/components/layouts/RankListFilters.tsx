@@ -158,14 +158,13 @@ const BranchDropDown = memo(({
     setActiveDropDown,
     dropdownKey,
 }: BranchDropDownProps) => {
-    console.log(selectedDegree.branches)
-    const options = useMemo(() =>
-        selectedDegree.branches.map(branch => {
+    const options = useMemo(() => {
+        if (selectedDegree.branches.length <= 1) return [];
+        return selectedDegree.branches.map(branch => {
             const [key] = Object.keys(branch);
             return `${branch[key][0]} - ${key}`;
-        }),
-        [selectedDegree.branches]
-    );
+        })
+    }, [selectedDegree.branches]);
 
     useEffect(() => {
         if (selectedDegree.branches.length === 1) {
