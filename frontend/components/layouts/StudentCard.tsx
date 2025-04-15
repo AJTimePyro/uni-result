@@ -48,7 +48,7 @@ const ScoreSummary = memo(({ totalScore, maxScore, cgpa }: { totalScore: number,
     <div className="mt-5 p-4 bg-gray-900 bg-opacity-40 backdrop-blur-sm rounded-lg grid grid-cols-3 gap-4">
         <div>
             <p className="text-sm text-blue-300">Percentage</p>
-            <p className="text-xl font-bold text-white">{((totalScore/maxScore) * 100).toFixed(2)} %</p>
+            <p className="text-xl font-bold text-white">{((totalScore / maxScore) * 100).toFixed(2)} %</p>
         </div>
         <div>
             <p className="text-sm text-blue-300">CGPA</p>
@@ -239,7 +239,6 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
             .map(subject => {
                 const subKey = `sub_${subject.subject_id}`;
                 const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F']");
-
                 return {
                     ...subject,
                     internal_marks: markData.internal,
@@ -262,11 +261,10 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="bg-transparent border-none shadow-2xl p-0 w-full max-w-md sm:max-w-lg md:max-w-xl mx-auto">
+            <DialogContent className="bg-transparent border-none shadow-2xl p-0 w-full sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Student Card</DialogTitle>
                 </DialogHeader>
-
                 <CardContent
                     studentData={studentData}
                     combinedSubjectData={combinedSubjectData}
