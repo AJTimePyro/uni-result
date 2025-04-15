@@ -489,7 +489,9 @@ class IPU_Result_Parser:
                         self.__save_link_metadata_param['batch'],
                         self.__save_link_metadata_param['college_name'],
                         self.__save_link_metadata_param['college_id'],
-                        self.__save_link_metadata_param['semester_num']
+                        self.__save_link_metadata_param['semester_num'],
+                        self.__save_link_metadata_param['degree_name'],
+                        self.__save_link_metadata_param['degree_id']
                     )
                 except Exception as err:
                     parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")

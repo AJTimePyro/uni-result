@@ -690,7 +690,9 @@ class Result_DB(DB):
         batch: int,
         college_name: str,
         college_id: str,
-        semester_num: int
+        semester_num: int,
+        degree_name: str,
+        degree_id: str
     ):
         """
         It will add student to hall of fame, those who achieved 10cgpa
@@ -702,7 +704,9 @@ class Result_DB(DB):
             "batch": batch,
             "college_name": college_name,
             "college_id": college_id,
-            "semester_num": semester_num
+            "semester_num": semester_num,
+            "degree_name": degree_name,
+            "degree_id": degree_id
         }
         hall_of_fame_entry.update(student_detail)
         
