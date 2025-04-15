@@ -256,7 +256,7 @@ const CollegeDropDown = memo(({
     });
 
     const options = useMemo(() =>
-        data[0]?.length ? ["All", ...(data[0]?.map((c) => c.college_name) || [])] : [],
+        data[0]?.length ? data[0]?.map((c) => c.college_name) : [],
         [data]
     );
 
@@ -298,7 +298,7 @@ const CollegeDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options.sort()}
+            options={options.length > 0 ? ["All", ...options.sort()]: []}
             selectedValue={selectedCollege.college_name}
             label="College"
             onSelect={handleSelect}
@@ -376,7 +376,7 @@ const ShiftDropDown = memo(({
 
     return (
         <RanklistFilterDropdown
-            options={options.sort()}
+            options={options.sort().reverse()}
             selectedValue={selectedCollegeShift.shift}
             label="Shift"
             onSelect={handleSelect}
