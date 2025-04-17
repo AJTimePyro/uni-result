@@ -74,6 +74,17 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  
+  /* Cosmic theme colors */
+  --cosmic-primary: 99, 102, 241;
+  --cosmic-secondary: 139, 92, 246;
+  --cosmic-accent: 219, 39, 119;
+  --cosmic-dark: 15, 23, 42;
+  --cosmic-light: 248, 250, 252;
+  --cosmic-star: 255, 255, 255;
 }
 
 .dark {
@@ -108,6 +119,9 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
 }
 
 @layer base {
@@ -117,4 +131,185 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.cosmic-theme {
+  background-color: rgb(var(--cosmic-dark));
+  color: rgb(var(--cosmic-light));
+  background-image: 
+    radial-gradient(rgba(var(--cosmic-primary), 0.15) 1px, transparent 1px),
+    radial-gradient(rgba(var(--cosmic-secondary), 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: 0 0, 25px 25px;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .cosmic-gradient {
+    background: linear-gradient(
+      45deg, 
+      rgba(var(--cosmic-primary), 0.8),
+      rgba(var(--cosmic-secondary), 0.8),
+      rgba(var(--cosmic-accent), 0.8)
+    );
+  }
+  
+  .cosmic-border {
+    border: 1px solid rgba(var(--cosmic-primary), 0.3);
+  }
+  
+  .cosmic-glow {
+    text-shadow: 0 0 8px rgba(var(--cosmic-primary), 0.6);
+  }
+  
+  .cosmic-card {
+    background: rgba(var(--cosmic-dark), 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--cosmic-primary), 0.2);
+    box-shadow: 0 8px 32px rgba(var(--cosmic-primary), 0.1);
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Cosmic theme styles */
+.cosmic-card {
+  background-color: rgba(13, 6, 32, 0.7);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.cosmic-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 25px rgba(102, 85, 255, 0.4);
+}
+
+.cosmic-border {
+  border: 2px solid rgba(123, 97, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.cosmic-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(123, 97, 255, 0.2), 
+    transparent
+  );
+  transition: 0.5s;
+}
+
+.cosmic-border:hover::before {
+  left: 100%;
+}
+
+.cosmic-gradient {
+  background: linear-gradient(135deg, #4b0082, #9400d3, #0e67b4);
+  background-size: 200% 200%;
+  animation: gradientAnimation 15s ease infinite;
+}
+
+.cosmic-glow {
+  text-shadow: 0 0 8px rgba(160, 120, 255, 0.6);
+  box-shadow: 0 0 15px rgba(124, 77, 255, 0.4);
+}
+
+@keyframes gradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.cosmic-text {
+  background: linear-gradient(90deg, #e0aaff, #c77dff, #9d4edd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
 }

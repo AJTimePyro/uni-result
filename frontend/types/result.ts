@@ -1,4 +1,4 @@
-interface Student {
+export interface Student {
     name: string;
     rank: number;
     roll_num: string;
@@ -8,7 +8,7 @@ interface Student {
     [key: string]: number | string;
 }
 
-interface Subject {
+export interface Subject {
     subject_id: string;
     max_external_marks: number;
     max_internal_marks: number;
