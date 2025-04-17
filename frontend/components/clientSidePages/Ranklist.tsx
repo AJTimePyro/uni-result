@@ -1,7 +1,7 @@
 'use client'
 
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import RankListFilters from "../layouts/RankListFilters";
 import { motion } from "framer-motion";
 import TopPerformers from "../layouts/TopPerformers";
@@ -84,42 +84,43 @@ export default function RankListClientSide() {
         setShouldRefetch(true)
     }
 
-    // const filteredData = useMemo(() => {
-    //     return rankListResult.filter(student =>
-    //         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    //         student.roll_num.includes(searchQuery)
-    //     );
-    // }, [searchQuery]);
+    const filteredStudents = useMemo(() => {
+        return rankListResult.slice(3).filter(student =>
+            student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            student.roll_num.includes(searchQuery)
+        );
+    }, [searchQuery, rankListResult]);
 
     return (
-        <div className="container mx-auto relative z-10 space-y-5">
-            <div className="relative col-span-full">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="text-indigo-300" size={20} />
+        <div className="mx-auto relative z-10 space-y-5">
+            <div className="relative space-y-5 max-md:p-6">
+                <div className="relative col-span-full">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="text-indigo-300" size={20} />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Explore students by name or cosmic identifier"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 rounded-lg bg-indigo-900/50 border border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
                 </div>
-                <input
-                    type="text"
-                    placeholder="Explore students by name or cosmic identifier"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-lg bg-indigo-900/50 border border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <RankListFilters isButtonLoading={isFetching} callBackFetchResult={callBackFetchResult} />
             </div>
-
-            <RankListFilters isButtonLoading={isFetching} callBackFetchResult={callBackFetchResult} />
 
             <div>
                 <motion.h1
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-4xl md:text-5xl font-bold mb-12 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500"
+                    className="text-4xl md:text-5xl font-bold mb-12 px-4 md:px-0 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500"
                 >
                     Academic Cosmos Leaderboard
                 </motion.h1>
 
-                <TopPerformers topStudents={rankListResult.slice(0, 3)} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
+                <TopPerformers topStudents={rankListResult?.slice(0, 3)} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
 
-                <RanklistTable students={rankListResult} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
+                <RanklistTable students={filteredStudents} setSelectedStudent={setSelectedStudent} setIsModalOpen={setStudentModalOpen} />
             </div>
 
             {

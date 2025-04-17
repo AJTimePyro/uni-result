@@ -9,7 +9,7 @@ interface TopPerformersProps {
 
 const TopPerformers: React.FC<TopPerformersProps> = ({ topStudents, setSelectedStudent, setIsModalOpen }) => {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-md:px-4">
             {topStudents.map((student, index) => (
                 <TopPerformerCard 
                     key={student.roll_num}
