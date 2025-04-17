@@ -20,6 +20,7 @@ SEMESTER_STR_TO_NUM = {
     "second": 2,
     "third": 3,
     "fourth": 4,
+    "forth": 4,
     "fifth": 5,
     "sixth": 6,
     "seventh": 7,
