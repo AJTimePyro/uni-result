@@ -250,7 +250,7 @@ class IPU_Result_Parser:
         # - Starts with letters
         # - Allows dots, dashes, slashes, parentheses and ampersand
         # - Allows optional space or whitespaces before number
-        pattern = r'[A-Z][A-Z.\-/()&]+\s*\d+'
+        pattern = r'[A-Z][A-Z.\-/()&]+\s*\d*'
 
         match = re.search(pattern, text, flags=re.IGNORECASE)
         return match.group().replace(' ', '') if match else None
