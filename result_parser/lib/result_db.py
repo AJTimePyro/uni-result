@@ -713,7 +713,7 @@ class Result_DB(DB):
         
         await self.__hall_of_fame_collec.insert_one(hall_of_fame_entry)
     
-    async def get_subject_by_code(self, subject_code: str) -> str:
+    async def get_subject_id_by_code(self, subject_code: str) -> str:
         if subject_code in self.subject_id_code_map:
             return self.subject_id_code_map[subject_code]
         else:
@@ -723,4 +723,4 @@ class Result_DB(DB):
                 self.subject_id_code_map[subject_code] = sub["subject_id"]
                 return sub["subject_id"]
             else:
-                raise ValueError(f"Subject {subject_code} not found in database")
+                return None

@@ -461,7 +461,12 @@ class IPU_Result_Parser:
                 subject_id = self.__self_cleaning_subject_code(subject_id)
                 subject_id = standardize_subject_code(subject_id)
                 if self.__res_db.subject_id_code_map.get(subject_id, None) is None:
-                    parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
+                    parser_logger.warning(f"Subject ID not found in given subject page, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}, trying for database")
+
+                    subject_id = self.__res_db.get_subject_id_by_code(student_n_subject_detail[subject_start_index])
+                    if not subject_id:
+                        parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
+                        raise ValueError(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
                     # raise ValueError(f"Subject ID not found in database, raw data: {subject_id}")
                 else:
                     subject_id = self.__res_db.subject_id_code_map[subject_id]
