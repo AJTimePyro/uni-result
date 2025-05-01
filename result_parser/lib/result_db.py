@@ -712,3 +712,15 @@ class Result_DB(DB):
         hall_of_fame_entry.update(student_detail)
         
         await self.__hall_of_fame_collec.insert_one(hall_of_fame_entry)
+    
+    async def get_subject_by_code(self, subject_code: str) -> str:
+        if subject_code in self.subject_id_code_map:
+            return self.subject_id_code_map[subject_code]
+        else:
+            sub = self.__subject_collec.find_one({"subject_code": subject_code})
+            if sub:
+                self.__subject_credits_dict[sub["subject_id"]] = sub["subject_credit"]
+                self.subject_id_code_map[subject_code] = sub["subject_id"]
+                return sub["subject_id"]
+            else:
+                raise ValueError(f"Subject {subject_code} not found in database")
