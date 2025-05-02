@@ -302,9 +302,6 @@ class IPU_Result_Parser:
         elif subject_passing_marks == 0:
             parser_logger.error(f"Failed to parse subject data(passing marks == 0) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, passing marks: {subject_passing_marks}")
             raise Exception(f"Failed to parse subject data(passing marks == 0)")
-        elif subject_passing_marks > subject_internal_marks or subject_passing_marks > subject_external_marks:
-            parser_logger.error(f"Failed to parse subject data(passing marks > internal marks or external marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, passing marks: {subject_passing_marks}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}")
-            raise Exception(f"Failed to parse subject data(passing marks > internal marks or external marks)")
 
         return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
     
@@ -499,7 +496,7 @@ class IPU_Result_Parser:
                 if self.__res_db.subject_id_code_map.get(subject_id, None) is None:
                     parser_logger.warning(f"Subject ID not found in given subject page, raw data: {subject_id}, trying for database")
 
-                    subject_id = await self.__res_db.get_subject_id_by_code(student_n_subject_detail[subject_start_index])
+                    subject_id = await self.__res_db.get_subject_id_by_code(subject_id)
                     if not subject_id:
                         parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
                         raise ValueError(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
