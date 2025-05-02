@@ -61,9 +61,7 @@ class Result_DB(DB):
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
-    # __college_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
-    __hall_of_fame_collec: pymongo.collection.Collection
     __uni_document: dict
     __gdrive: GDrive
     __final_folder_path_tracker: str
@@ -75,15 +73,13 @@ class Result_DB(DB):
     __degree_doc_id: str
     __gdrive_file_id: str | None
 
-    def __init__(self, university_name: str = ''):
+    def __init__(self):
         super().__init__()
 
         self.__uni_collec = self._uni_collec
         self.__batch_collec = self._batch_collec
         self.__degree_collec = self._degree_collec
-        # self.__college_collec = self._college_collec
         self.__subject_collec = self._subject_collec
-        self.__hall_of_fame_collec = self._hall_of_fame_collec
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
@@ -683,37 +679,7 @@ class Result_DB(DB):
         await self.commit_transaction()
         self.__final_folder_path_tracker = self.__uni_document["name"]
     
-    async def add_hall_of_fame_student(
-        self,
-        student_detail: dict[str, str | list[int]],
-        university_name: str,
-        batch: int,
-        college_name: str,
-        college_id: str,
-        semester_num: int,
-        degree_name: str,
-        degree_id: str
-    ):
-        """
-        It will add student to hall of fame, those who achieved 10cgpa
-        """
-
-        del student_detail["college_id"]
-        result_db_logger.info(f"Adding student {student_detail['roll_num']} - {student_detail['name']} to hall of fame...")
-        hall_of_fame_entry = {
-            "university_name": university_name,
-            "batch": batch,
-            "college_name": college_name,
-            "college_id": college_id,
-            "semester_num": semester_num,
-            "degree_name": degree_name,
-            "degree_id": degree_id
-        }
-        hall_of_fame_entry.update(student_detail)
-        
-        await self.__hall_of_fame_collec.insert_one(hall_of_fame_entry)
-    
-    async def get_subject_id_by_code(self, subject_code: str) -> str:
+    def get_subject_id_by_code(self, subject_code: str) -> str:
         if subject_code in self.subject_id_code_map:
             return self.subject_id_code_map[subject_code]
         else:

@@ -49,7 +49,7 @@ class IPU_Result_Parser:
     __starting_session: int
     __res_db: Result_DB
     __save_link_metadata_param: dict
-    __exam_type: str
+    __current_batch_year: int
 
     def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
@@ -64,7 +64,7 @@ class IPU_Result_Parser:
         self.__starting_session = session_start
         self.__res_db = None
         self.__save_link_metadata_param = dict()
-        self.__exam_type = ''
+        self.__current_batch_year = 0
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -96,9 +96,14 @@ class IPU_Result_Parser:
                 parser_logger.info("Found subject list, storing previous results...")
                 await self.__storing_result()
 
+                # Clearing metadata
+                self.__res_db.reset_subject_data_list()
+                self.__save_link_metadata_param.clear()
+                self.__current_batch_year = 0
+
                 await self.__start_subjects_parser(next_page, page_table)
             else:
-                await self.__start_student_results_parser(page_table)
+                await self.__start_student_results_parser(next_page, page_table)
     
     async def __storing_result(self):        
         if len(self.__students_result_list) == 0:
@@ -112,8 +117,6 @@ class IPU_Result_Parser:
         # Clearing previous results
         self.__students_result_list.clear()
         self.__students_result_index = -1
-        self.__res_db.reset_subject_data_list()
-        self.__save_link_metadata_param.clear()
     
     def __get_next_page(self) -> tuple[str, list[list[str]]] | None:
         """
@@ -142,9 +145,6 @@ class IPU_Result_Parser:
         batch = self.__peek_to_get_batch()
         if batch == 0:
             pass
-        elif batch < self.__starting_session:
-            parser_logger.error(f"Batch year {batch} is less than starting session year {self.__starting_session}")
-            raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
         if exam_meta_data_matched_regex is None:
@@ -209,18 +209,30 @@ class IPU_Result_Parser:
         batch = 0
 
         if not self.__is_page_contains_subject_list(next_page):
-            batch_searched = re.search(r'Batch:\s(\d{4})', next_page)
-            batch_str = batch_searched.group(1)
-            batch = self.__get_int_val(batch_str)
+            batch = self.__get_batch(next_page)
 
             exam_type_searched = re.search(r'Examination:\s*(\w+)', next_page, re.IGNORECASE)
             if exam_type_searched is None:
                 parser_logger.error(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
                 raise ValueError(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
-            self.__exam_type = exam_type_searched.group(1).strip()
 
         self.__pdf_page_index -= 1
         return batch
+    
+    def __get_batch(self, raw_data: str):
+        """
+        It will get batch number from given raw data
+        """
+
+        if not self.__is_page_contains_subject_list(raw_data):
+            try:
+                batch_searched = re.search(r'Batch:\s(\d{4})', raw_data)
+                batch_str = batch_searched.group(1)
+                return self.__get_int_val(batch_str)
+            except Exception as e:
+                parser_logger.warning(f"Failed to parse Batch from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+        
+        return 0
     
     def __skip_till_get_subjects_list(self):
         """
@@ -334,7 +346,6 @@ class IPU_Result_Parser:
                 "subject_ids" : sub_id_list,
                 "degree_id" : meta_data['degree_code'],
                 "degree_name" : meta_data['degree_name'],
-                "batch" : meta_data['batch'],
                 "college_id" : meta_data['college_code'],
                 "college_name" : meta_data['college_name'],
                 "semester_num" : meta_data['semester_num'],
@@ -342,9 +353,8 @@ class IPU_Result_Parser:
             }
         else:
             self.__save_link_metadata_param['subject_ids'].extend(sub_id_list)
-            self.__save_link_metadata_param['batch'] = meta_data['batch']
 
-        if self.__save_link_metadata_param['batch'] == 0:
+        if meta_data['batch'] == 0:
             parser_logger.info("Next page is also subject list, going to parse it as well...")
             page_data = self.__get_next_page()
             if not page_data:
@@ -353,26 +363,39 @@ class IPU_Result_Parser:
             parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
             await self.__start_subjects_parser(page_data[0], page_data[1])
         else:
-            if self.__save_link_metadata_param['batch'] == 0:
-                raise ValueError("Batch number is not found in metadata")
+            parser_logger.info("Subject list parsed successfully")
+            parser_logger.info("Now parsing student results...")
+    
+    async def __start_student_results_parser(self, raw_result: str, result_table: list[list[str]]):
+        """
+        This will remove header from page data and then starts parsing
+        """
+        
+        batch_year = self.__get_batch(raw_result)
+        if batch_year == 0:
+            parser_logger.error(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
+            raise ValueError(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
+        elif batch_year < self.__starting_session:
+            parser_logger.warning(f"Batch year {batch_year} is less than starting session year {self.__starting_session}, skipping page no. {self.__pdf_page_index + 1}...")
+            return
+        
+        if self.__current_batch_year != batch_year:
+            if self.__current_batch_year != 0:
+                parser_logger.info(f"Storing previous result as new batch year {batch_year} found")
+                await self.__storing_result()
+
             await self.__res_db.link_all_metadata(
                 subject_ids = self.__save_link_metadata_param['subject_ids'],
                 degree_id = self.__save_link_metadata_param['degree_id'],
                 degree_name = self.__save_link_metadata_param['degree_name'],
-                batch = self.__save_link_metadata_param['batch'],
+                batch = batch_year,
                 college_id = self.__save_link_metadata_param['college_id'],
                 college_name = self.__save_link_metadata_param['college_name'],
                 semester_num = self.__save_link_metadata_param['semester_num'],
                 is_evening_shift = self.__save_link_metadata_param['is_evening_shift']
             )
-            parser_logger.info("Subject list parsed successfully")
-            parser_logger.info("Now parsing student results...")
-    
-    async def __start_student_results_parser(self, result_table: list[list[str]]):
-        """
-        This will remove header from page data and then starts parsing
-        """
-        
+            self.__current_batch_year = batch_year
+
         student_index = 1
         while student_index < len(result_table) and result_table[student_index][1]:
             self.__students_result_list.append(DEFAULT_STUDENT_RESULT.copy())
@@ -482,24 +505,3 @@ class IPU_Result_Parser:
             student_grade_list.append(grade)
             subject_start_index += 2
         
-        if all(grade == 'O' for grade in student_grade_list):
-            if self.__exam_type.lower() == 'regular':
-                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
-
-                try:
-                    # Adding student to hall of fame
-                    await self.__res_db.add_hall_of_fame_student(
-                        self.__students_result_list[self.__students_result_index],
-                        UNIVERSITY_NAME,
-                        self.__save_link_metadata_param['batch'],
-                        self.__save_link_metadata_param['college_name'],
-                        self.__save_link_metadata_param['college_id'],
-                        self.__save_link_metadata_param['semester_num'],
-                        self.__save_link_metadata_param['degree_name'],
-                        self.__save_link_metadata_param['degree_id']
-                    )
-                except Exception as err:
-                    parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
-                    parser_logger.error(err)
-            else:
-                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa, but maybe it's not his/her regular exam result, so not adding to hall of fame, other details: {self.__students_result_list[self.__students_result_index]}")
