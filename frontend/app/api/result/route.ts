@@ -23,13 +23,11 @@ export async function GET(req: NextRequest) {
         })
     }
 
-    const resultClient = new Result(
-        college_id,
+    const resultClient = new Result()
+    await resultClient.fetchResult({ college_id,
         degree_doc_id,
-        parseInt(semester_num),
-        result_file_id
-    )
-    await resultClient.fetchResult()
+        semester_num : parseInt(semester_num),
+        result_file_id})
 
     return NextResponse.json({
         result : resultClient.result,
