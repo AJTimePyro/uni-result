@@ -5,7 +5,7 @@ import { connectToDatabase } from "./db";
 import mongoose from "mongoose";
 import Subject from "@/models/Subject";
 
-type StudentRecord = {
+export type StudentRecord = {
     roll_num: string;
     name: string;
     college_id: string;
@@ -24,22 +24,25 @@ export class Result {
     public result: StudentRecord[];
     public subjects: object[];
 
-    constructor(
-        college_id: string,
-        degree_doc_id: string,
-        semester_num: number,
-        result_file_id: string
-    ) {
-        this.collegeID = college_id;
-        this.degreeDocID = degree_doc_id;
-        this.semNum = semester_num;
-        this.resultFileID = result_file_id;
-
+    constructor() {
+        this.collegeID = "";
+        this.degreeDocID = "";
+        this.semNum = 0;
+        this.resultFileID = "";
         this.result = [];
         this.subjects = [];
     }
 
-    async fetchResult() {
+    async fetchResult({ college_id, degree_doc_id, semester_num, result_file_id }: {
+        college_id: string,
+        degree_doc_id: string,
+        semester_num: number,
+        result_file_id: string
+    }) {
+        this.collegeID = college_id;
+        this.degreeDocID = degree_doc_id;
+        this.semNum = semester_num;
+        this.resultFileID = result_file_id;
         await connectToDatabase();
 
         // Getting File Content
@@ -117,5 +120,36 @@ export class Result {
         }
 
         return students;
+    }
+
+    public async fetchStudentInfo(studentId : string) {
+        const rollNo :string  = studentId.slice(0,3);
+        const collegeId : string = studentId.slice(3,6);
+        const degreeId : string = studentId.slice(6,9);
+        const batchYear : string = "20"+studentId.slice(9,11);
+        return {rollNo , collegeId , degreeId , batchYear}
+    }
+
+    private async fetchStudentResult(fileID : string , studentId: string){
+        await connectToDatabase();
+
+        // Getting File Content
+        const fileContent: string = await readGDriveFile(fileID)
+
+        const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true
+        })
+        if (records.length == 0) {
+            throw new Error("No Data Found")
+        }
+        // Filtering result (If student id is empty then return null)
+        const filteredRecords = records.filter(
+            (row : StudentRecord)=>row["roll_num"]===studentId
+        );
+        if(filteredRecords.length === 0){
+            throw new Error("Student not found");
+        }
+        return filteredRecords;
     }
 }
