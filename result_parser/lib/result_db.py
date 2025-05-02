@@ -584,25 +584,44 @@ class Result_DB(DB):
         # Standardizing subject code
         subject_code = standardize_subject_code(subject_code)
 
-        sub_data = await self.__subject_collec.find_one_and_update(
-            {
-                "subject_id": subject_id,
-                "university_id": self.__uni_document["_id"]
-            },  {
-                    "$setOnInsert": {
-                        "subject_name": subject_name,
-                        "subject_code": subject_code,
-                        "subject_id": subject_id,
-                        "subject_credit": subject_credit,
-                        "max_internal_marks": max_internal_marks,
-                        "max_external_marks": max_external_marks,
-                        "max_total_marks": max_marks,
-                        "passing_marks": passing_marks,
-                        "university_id": self.__uni_document["_id"]
-                    }
-            }, upsert = True,
-            return_document = pymongo.ReturnDocument.BEFORE
-        )
+        existing_sub = await self._subject_collec.find_one({
+            "subject_code": subject_code,
+            "university_id": self.__uni_document["_id"]
+        })
+        if existing_sub:
+            if (existing_sub["subject_id"] != subject_id or
+                existing_sub["subject_name"] != subject_name or
+                existing_sub["subject_credit"] != subject_credit or
+                existing_sub["max_internal_marks"] != max_internal_marks or
+                existing_sub["max_external_marks"] != max_external_marks or
+                existing_sub["passing_marks"] != passing_marks or
+                existing_sub["max_total_marks"] != max_marks
+            ):
+                result_db_logger.error(
+                    f"Subject {subject_code} already exists with different details. "
+                    f"Provided: subject_id: {subject_id}, subject_name: {subject_name}, "
+                    f"subject_credit: {subject_credit}, max_internal_marks: {max_internal_marks}, "
+                    f"max_external_marks: {max_external_marks}, passing_marks: {passing_marks}, "
+                    f"max_total_marks: {max_marks}. Existing: {existing_sub}"
+                )
+                raise Exception("Subject already exists with different details")
+            else:
+                self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
+                self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
+                return existing_sub["subject_id"], existing_sub["_id"]
+
+        sub_data = await self.__subject_collec.insert_one({
+            "subject_name": subject_name,
+            "subject_code": subject_code,
+            "subject_id": subject_id,
+            "subject_credit": subject_credit,
+            "max_internal_marks": max_internal_marks,
+            "max_external_marks": max_external_marks,
+            "max_total_marks": max_marks,
+            "passing_marks": passing_marks,
+            "university_id": self.__uni_document["_id"]
+        })
+        result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
 
         # Storing subject credits to calulate CGPA in future
         self.__subject_credits_dict[subject_id] = subject_credit
@@ -610,18 +629,7 @@ class Result_DB(DB):
         # Storing for conversion of subject code to subject id
         self.subject_id_code_map[subject_code] = subject_id
 
-        if sub_data:
-            return subject_id, sub_data["_id"]
-        else:
-            sub_data = await self.__subject_collec.find_one({
-                "subject_id": subject_id,
-                "university_id": self.__uni_document["_id"]
-            }, {
-                "_id" : 1
-            })
-            result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
-
-            return subject_id, sub_data["_id"]
+        return subject_id, sub_data.inserted_id
     
     async def store_and_upload_result(
         self,
