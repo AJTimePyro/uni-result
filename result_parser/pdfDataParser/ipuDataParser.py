@@ -284,6 +284,9 @@ class IPU_Result_Parser:
             return False
         subject_credit = self.__get_float_val(subject_credit_search.group(1))
 
+        if not subject_credit:
+            parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
+
         if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
             return None
