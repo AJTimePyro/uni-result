@@ -296,6 +296,16 @@ class IPU_Result_Parser:
         subject_external_marks = self.__get_int_val(raw_subject_data[-3])
         subject_internal_marks = self.__get_int_val(raw_subject_data[-4])
 
+        if subject_internal_marks + subject_external_marks != subject_max_marks:
+            parser_logger.error(f"Failed to parse subject data(internal marks + external marks != total max marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}, max marks: {subject_max_marks}")
+            raise Exception(f"Failed to parse subject data(internal marks + external marks != total max marks)")
+        elif subject_passing_marks == 0:
+            parser_logger.error(f"Failed to parse subject data(passing marks == 0) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, passing marks: {subject_passing_marks}")
+            raise Exception(f"Failed to parse subject data(passing marks == 0)")
+        elif subject_passing_marks > subject_internal_marks or subject_passing_marks > subject_external_marks:
+            parser_logger.error(f"Failed to parse subject data(passing marks > internal marks or external marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, passing marks: {subject_passing_marks}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}")
+            raise Exception(f"Failed to parse subject data(passing marks > internal marks or external marks)")
+
         return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
     
     async def __subjects_data_parser(self, raw_subjects_table: list[list[str]]):
