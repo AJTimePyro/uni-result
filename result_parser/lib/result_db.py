@@ -584,31 +584,18 @@ class Result_DB(DB):
         # Standardizing subject code
         subject_code = standardize_subject_code(subject_code)
 
+        if len(subject_id) < 6:
+            result_db_logger.error(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
+            raise ValueError(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
+
         existing_sub = await self._subject_collec.find_one({
-            "subject_code": subject_code,
+            "subject_id": subject_id,
             "university_id": self.__uni_document["_id"]
         })
-        if existing_sub:
-            if (existing_sub["subject_id"] != subject_id or
-                existing_sub["subject_name"] != subject_name or
-                existing_sub["subject_credit"] != subject_credit or
-                existing_sub["max_internal_marks"] != max_internal_marks or
-                existing_sub["max_external_marks"] != max_external_marks or
-                existing_sub["passing_marks"] != passing_marks or
-                existing_sub["max_total_marks"] != max_marks
-            ):
-                result_db_logger.error(
-                    f"Subject {subject_code} already exists with different details. "
-                    f"Provided: subject_id: {subject_id}, subject_name: {subject_name}, "
-                    f"subject_credit: {subject_credit}, max_internal_marks: {max_internal_marks}, "
-                    f"max_external_marks: {max_external_marks}, passing_marks: {passing_marks}, "
-                    f"max_total_marks: {max_marks}. Existing: {existing_sub}"
-                )
-                raise Exception("Subject already exists with different details")
-            else:
-                self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
-                self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
-                return existing_sub["subject_id"], existing_sub["_id"]
+        if existing_sub and existing_sub["subject_code"] == subject_code:
+            self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
+            self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
+            return existing_sub["subject_id"], existing_sub["_id"]
 
         sub_data = await self.__subject_collec.insert_one({
             "subject_name": subject_name,
