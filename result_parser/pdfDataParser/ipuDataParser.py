@@ -291,17 +291,30 @@ class IPU_Result_Parser:
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
             return None
         
-        subject_passing_marks = self.__get_int_val(raw_subject_data[-1])
-        subject_max_marks = self.__get_int_val(raw_subject_data[-2])
-        subject_external_marks = self.__get_int_val(raw_subject_data[-3])
-        subject_internal_marks = self.__get_int_val(raw_subject_data[-4])
+        raw_internal_marks = raw_subject_data[paper_id_index + 8]
+        raw_external_marks = raw_subject_data[paper_id_index + 9]
+        raw_max_marks = raw_subject_data[paper_id_index + 10]
+        
+        if (((not raw_internal_marks.isnumeric()) and raw_internal_marks != '--') or
+            ((not raw_external_marks.isnumeric()) and raw_external_marks != '--') or
+            (not raw_max_marks.isnumeric())
+        ):
+            parser_logger.error(f"Failed to parse subject data(marks is abnormal) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            raise Exception(f"Failed to parse subject data(marks is abnormal) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+        
+        subject_internal_marks = self.__get_int_val(raw_subject_data[paper_id_index + 8])
+        subject_external_marks = self.__get_int_val(raw_subject_data[paper_id_index + 9])
+        subject_max_marks = self.__get_int_val(raw_subject_data[paper_id_index + 10])
+
+        if len(raw_subject_data) > paper_id_index + 11 and raw_subject_data[paper_id_index + 11].isnumeric():
+            subject_passing_marks = self.__get_int_val(raw_subject_data[paper_id_index + 11])
+        else:
+            subject_passing_marks = 40 if subject_max_marks == 100 else subject_max_marks/2
+            parser_logger.warning(f"Passing marks is empty, Using default passing marks, raw data: {raw_subject_data}, new passing marks: {subject_passing_marks}")
 
         if subject_internal_marks + subject_external_marks != subject_max_marks:
             parser_logger.error(f"Failed to parse subject data(internal marks + external marks != total max marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}, max marks: {subject_max_marks}")
             raise Exception(f"Failed to parse subject data(internal marks + external marks != total max marks)")
-        elif subject_passing_marks == 0:
-            parser_logger.error(f"Failed to parse subject data(passing marks == 0) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, passing marks: {subject_passing_marks}")
-            raise Exception(f"Failed to parse subject data(passing marks == 0)")
 
         return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
     
