@@ -36,7 +36,6 @@ type CollegeShift = {
 
 type RankListRequestJSON = {
     college_id: string
-    semester_num: number
     degree_doc_id: string
     result_file_id: string
 }

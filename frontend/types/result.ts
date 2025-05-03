@@ -12,8 +12,30 @@ interface Subject {
     subject_id: string;
     max_external_marks: number;
     max_internal_marks: number;
+    max_total_marks: number;
     passing_marks: number;
     subject_code: string;
     subject_credit: number;
     subject_name: string;
+}
+
+type StudentRecord = {
+    roll_num: string;
+    name: string;
+    college_id: string;
+    total_marks_scored: string;
+    max_marks_possible: string;
+    rank?: number;
+    cgpa: string | number;
+    [key: string]: string | number | undefined;
+};
+
+type StudentSemResErr = {
+    error?: string,
+    results?: StudentRecord
+}
+
+interface StudentRes {
+    subjects: Subject[],
+    results: Record<string, StudentSemResErr>
 }

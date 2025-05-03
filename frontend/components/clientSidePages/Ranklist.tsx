@@ -50,7 +50,6 @@ export default function RankListClientSide() {
     const [requestJson, setRequestJson] = useState<RankListRequestJSON>({
         college_id: '',
         degree_doc_id: '',
-        semester_num: 0,
         result_file_id: ''
     });
     const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
