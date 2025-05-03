@@ -50,8 +50,9 @@ class IPU_Result_Parser:
     __res_db: Result_DB
     __save_link_metadata_param: dict
     __current_batch_year: int
+    __bypass_subject_max_marks_error: bool
 
-    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
+    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1, BYPASS_SUB_MAX_MARKS_ERROR = False):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
@@ -65,6 +66,7 @@ class IPU_Result_Parser:
         self.__res_db = None
         self.__save_link_metadata_param = dict()
         self.__current_batch_year = 0
+        self.__bypass_subject_max_marks_error = BYPASS_SUB_MAX_MARKS_ERROR
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -316,9 +318,12 @@ class IPU_Result_Parser:
             subject_passing_marks = 40 if subject_max_marks == 100 else subject_max_marks/2
             parser_logger.warning(f"Passing marks is empty, Using default passing marks, raw data: {raw_subject_data}, new passing marks: {subject_passing_marks}")
 
-        if subject_internal_marks + subject_external_marks != subject_max_marks:
+        if subject_max_marks != 0 and subject_internal_marks + subject_external_marks != subject_max_marks:
             parser_logger.error(f"Failed to parse subject data(internal marks + external marks != total max marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}, max marks: {subject_max_marks}")
             raise Exception(f"Failed to parse subject data(internal marks + external marks != total max marks)")
+        
+        if subject_max_marks == 0 and self.__bypass_subject_max_marks_error:
+            subject_max_marks = subject_internal_marks + subject_external_marks
 
         return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
     
