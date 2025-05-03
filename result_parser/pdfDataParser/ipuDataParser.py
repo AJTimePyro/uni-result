@@ -262,7 +262,7 @@ class IPU_Result_Parser:
         # - Starts with letters
         # - Allows dots, dashes, slashes, parentheses and ampersand
         # - Allows optional space or whitespaces before number
-        pattern = r'[A-Z][A-Z.\-/()&]+\s*\d*'
+        pattern = r'[A-Z][A-Z.\-/()&]*\s*\d*'
 
         match = re.search(pattern, text, flags=re.IGNORECASE)
         return match.group().replace(' ', '') if match else None
@@ -276,7 +276,11 @@ class IPU_Result_Parser:
         subject_name = raw_subject_data[paper_id_index + 2].strip()
 
         raw_subject_code = raw_subject_data[paper_id_index + 1].strip()
-        subject_code = self.__self_cleaning_subject_code(raw_subject_code)
+        if raw_subject_code == subject_id:
+            parser_logger.warning(f"Subject code is same as subject id in subject page. Let's be this way..., raw data: {raw_subject_data}")
+            subject_code = subject_id
+        else:
+            subject_code = self.__self_cleaning_subject_code(raw_subject_code)
         
         subject_credit_search = re.search(r'(\d+(?:\.\d+)?)$', raw_subject_data[paper_id_index + 3])
         if subject_credit_search is None:
@@ -288,7 +292,7 @@ class IPU_Result_Parser:
             parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
 
         if not (subject_id and subject_code and subject_name):
-            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, subject id: {subject_id}, subject code: {subject_code}, subject name: {subject_name}")
             return None
         
         raw_internal_marks = raw_subject_data[paper_id_index + 8]
