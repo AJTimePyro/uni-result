@@ -4,67 +4,99 @@ import Degree from "@/models/Degree";
 import { connectToDatabase } from "./db";
 import mongoose from "mongoose";
 import Subject from "@/models/Subject";
-
-type StudentRecord = {
-    roll_num: string;
-    name: string;
-    college_id: string;
-    total_marks_scored: string;
-    max_marks_possible: string;
-    rank?: number;
-    cgpa: string | number;
-    [key: string]: string | number | undefined;
-};
+import { NextResponse } from "next/server";
 
 export class Result {
-    private collegeID: string;
-    private degreeDocID: string;
-    private semNum: number;
-    private resultFileID: string;
     public result: StudentRecord[];
-    public subjects: object[];
+    public subjects: Subject[];
 
-    constructor(
-        college_id: string,
-        degree_doc_id: string,
-        semester_num: number,
-        result_file_id: string
-    ) {
-        this.collegeID = college_id;
-        this.degreeDocID = degree_doc_id;
-        this.semNum = semester_num;
-        this.resultFileID = result_file_id;
-
+    constructor() {
         this.result = [];
         this.subjects = [];
     }
 
-    async fetchResult() {
+    async fetchResult(college_id: string, degree_doc_id: string, result_file_id: string) {
         await connectToDatabase();
 
-        // Getting File Content
-        const fileContent: string = await readGDriveFile(this.resultFileID)
-
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true
-        })
+        // Reading CSV
+        const records = await this.fetchNReadCSV(result_file_id)
         if (records.length == 0) {
             throw new Error("No Data Found")
         }
 
         // Getting all subject Data
-        const subIDList = this.getAllSubjects(records[0])
-        await this.getAllSubjectData(subIDList)
+        const subIDList = this.getAllSubjectsIDFromCSVHeader(records[0])
+        await this.fetchAllSubjectDataByDegree(subIDList, degree_doc_id)
 
         // Filtering result (If college id is empty then return result of all colleges)
-        const filteredRecords = this.collegeID ?
-            records.filter((row: StudentRecord) => row["college_id"] === this.collegeID) :
+        const filteredRecords = college_id ?
+            records.filter((row: StudentRecord) => row["college_id"] === college_id) :
             records;
         this.result = this.assignRanks(filteredRecords);
     }
 
-    private getAllSubjects(firstRecord: any): string[] {
+    async fetchStudentAllSemRes(studentRollNum: string) {
+        await connectToDatabase();
+
+        // Getting Student Info
+        const { degreeId, batchYear } = this.fetchStudentInfo(studentRollNum)
+
+        // Getting Degree
+        const degree = await this.getDegreeByIDYear(degreeId, batchYear, 'subjects sem_results');
+        if (!degree) {
+            return NextResponse.json({
+                error: "Degree not found"
+            }, {
+                status: 404
+            });
+        }
+
+        const sem_results: Record<string, string> = degree.sem_results;
+        if (!sem_results || Object.keys(sem_results).length === 0) {
+            return NextResponse.json({
+                error: "Semester results not found"
+            }, {
+                status: 404
+            })
+        }
+
+        // Fetching All Semester Result
+        const subIDList = [];
+        const studentSemResults: StudentRes = {
+            subjects: [],
+            results: {}
+        };
+        for (const [sem, fileID] of Object.entries(sem_results)) {
+            studentSemResults.results[sem] = {};
+            try {
+                const records = await this.fetchNReadCSV(fileID);
+                await this.fetchStudentResult(records, studentRollNum);
+
+                studentSemResults.results[sem].results = this.result[0]
+                subIDList.push(...this.getAllSubjectsIDFromCSVHeader(records[0]));
+            } catch (err: any) {
+                studentSemResults.results[sem].error = `Error : ${err.message}`
+            }
+        }
+
+        // Fetching All Subject Data
+        await this.getAllSubjectData(subIDList, degree.subjects)
+        studentSemResults.subjects = this.subjects;
+
+        return NextResponse.json(studentSemResults);
+    }
+
+    private async fetchNReadCSV(fileID: string) {
+        // Getting File Content
+        const fileContent: string = await readGDriveFile(fileID);
+
+        return parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true
+        });
+    }
+
+    private getAllSubjectsIDFromCSVHeader(firstRecord: any): string[] {
         const subIdList = Object.keys(firstRecord).filter(
             column => column.startsWith('sub_')
         ).map(
@@ -74,17 +106,22 @@ export class Result {
         return subIdList;
     }
 
-    private async getAllSubjectData(subIDList: string[]) {
-        // Fetching degree
+    private async fetchAllSubjectDataByDegree(subIDList: string[], degreeDocID: string) {
+        // Fetching degree to get subject doc ids
         const degree = await Degree.findOne({
-            _id: new mongoose.Types.ObjectId(this.degreeDocID)
+            _id: new mongoose.Types.ObjectId(degreeDocID)
         }).select('subjects');
 
+        // Fetching All Subject data
+        await this.getAllSubjectData(subIDList, degree.subjects);
+    }
+
+    private async getAllSubjectData(subIDList: string[], subjects: Record<string, string>) {
         // Getting All Subject Doc IDs
         const subject_doc_id_array: string[] = [];
         subIDList.forEach(subID => {
-            if (subID in degree.subjects) {
-                subject_doc_id_array.push(degree.subjects[subID])
+            if (subID in subjects) {
+                subject_doc_id_array.push(subjects[subID])
             }
         })
         const objectIds = subject_doc_id_array.map(id => new mongoose.Types.ObjectId(id));
@@ -93,7 +130,7 @@ export class Result {
         this.subjects = await Subject.find(
             { _id: { $in: objectIds } },
             { university_id: 0 }
-        );
+        ).select('-_id ');
     }
 
     private assignRanks(resultData: StudentRecord[]) {
@@ -117,5 +154,39 @@ export class Result {
         }
 
         return students;
+    }
+
+    private fetchStudentInfo(studentId: string) {
+        const rollNo: string = studentId.slice(0, 3);
+        const collegeId: string = studentId.slice(3, 6);
+        const degreeId: string = studentId.slice(6, 9);
+        const batchYear: string = "20" + studentId.slice(9, 11);
+        return { rollNo, collegeId, degreeId, batchYear }
+    }
+
+    private async getDegreeByIDYear(degreeID: string, batchYear: string, select_str: string = '') {
+        const degree = await Degree.findOne({
+            degree_id: degreeID,
+            batch_year: Number(batchYear)
+        }).select(select_str ? select_str : 'subjects');
+        if (!degree) {
+            throw new Error("Degree not found")
+        }
+
+        return degree
+    }
+
+    private async fetchStudentResult(records: any, studentId: string) {
+        if (records.length == 0) {
+            throw new Error("No Data Found")
+        }
+        // Filtering result (If student id is empty then throw error)
+        const filteredRecord = records.filter(
+            (row: StudentRecord) => row["roll_num"] === studentId
+        );
+        if (filteredRecord.length === 0) {
+            throw new Error("Student not found");
+        }
+        this.result = filteredRecord;
     }
 }
