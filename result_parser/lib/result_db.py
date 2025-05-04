@@ -590,9 +590,10 @@ class Result_DB(DB):
 
         existing_sub = await self._subject_collec.find_one({
             "subject_id": subject_id,
+            "subject_code": subject_code,
             "university_id": self.__uni_document["_id"]
         })
-        if existing_sub and existing_sub["subject_code"] == subject_code:
+        if existing_sub:
             self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
             return existing_sub["subject_id"], existing_sub["_id"]

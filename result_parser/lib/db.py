@@ -4,6 +4,7 @@ from motor.motor_asyncio import (
     AsyncIOMotorDatabase
 )
 from result_parser.lib.env import ENV
+import asyncio
 
 mongoClient = AsyncIOMotorClient(ENV.MONGO_STR)
 
@@ -22,3 +23,11 @@ class DB:
         self._batch_collec = self.__db["batches"]
         self._degree_collec = self.__db["degrees"]
         self._subject_collec = self.__db["subjects"]
+
+        asyncio.create_task(self.__required_indexing())
+    
+    async def __required_indexing(self):
+        await self._subject_collec.create_index([
+                ("subject_id", 1), ("subject_code", 1), ("university_id", 1)
+            ], unique = True
+        )

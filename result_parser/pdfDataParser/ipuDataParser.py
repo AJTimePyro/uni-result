@@ -350,6 +350,9 @@ class IPU_Result_Parser:
             
             subject_id, subject_doc_id = subject_res
             subject_list.append((subject_id, subject_doc_id))
+        
+        if len(subject_list) == 0:
+            parser_logger.warning(f"Subject already exists in page no. {self.__pdf_page_index + 1}")
         return subject_list
     
     async def __start_subjects_parser(self, page_data: str, page_table: list[list[str]]):
