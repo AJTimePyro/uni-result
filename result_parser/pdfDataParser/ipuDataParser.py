@@ -316,7 +316,8 @@ class IPU_Result_Parser:
             subject_passing_marks = self.__get_int_val(raw_subject_data[paper_id_index + 11])
         else:
             subject_passing_marks = 40 if subject_max_marks == 100 else subject_max_marks/2
-            parser_logger.warning(f"Passing marks is empty, Using default passing marks, raw data: {raw_subject_data}, new passing marks: {subject_passing_marks}")
+            if subject_max_marks != 100:
+                parser_logger.warning(f"Passing marks is empty, Using default passing marks, raw data: {raw_subject_data}, new passing marks: {subject_passing_marks}")
 
         if subject_max_marks != 0 and subject_internal_marks + subject_external_marks != subject_max_marks:
             parser_logger.error(f"Failed to parse subject data(internal marks + external marks != total max marks) from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, internal marks: {subject_internal_marks}, external marks: {subject_external_marks}, max marks: {subject_max_marks}")
