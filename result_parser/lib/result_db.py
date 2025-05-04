@@ -594,6 +594,9 @@ class Result_DB(DB):
             "university_id": self.__uni_document["_id"]
         })
         if existing_sub:
+            if existing_sub["subject_credit"] != subject_credit or existing_sub["subject_name"] != subject_name or existing_sub["max_internal_marks"] != max_internal_marks or existing_sub["max_external_marks"] != max_external_marks or existing_sub["max_total_marks"] != max_marks or existing_sub["passing_marks"] != passing_marks:
+                result_db_logger.error(f"Subject {subject_id} already exists with different marks, subject name: {subject_name}, subject code: {subject_code}")
+                raise ValueError(f"Subject {subject_id} already exists with different marks, subject name: {subject_name}, subject code: {subject_code}")
             self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
             return existing_sub["subject_id"], existing_sub["_id"]
