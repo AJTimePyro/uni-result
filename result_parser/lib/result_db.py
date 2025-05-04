@@ -597,7 +597,7 @@ class Result_DB(DB):
         if existing_sub:
             if not self.__bypass_exist_subject_matching and (
                 existing_sub["subject_credit"] != subject_credit or
-                existing_sub["subject_name"] != subject_name or
+                existing_sub["subject_name"].lower() != subject_name.lower() or
                 existing_sub["max_internal_marks"] != max_internal_marks or
                 existing_sub["max_external_marks"] != max_external_marks or
                 existing_sub["max_total_marks"] != max_marks or
