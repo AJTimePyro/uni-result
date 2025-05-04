@@ -595,7 +595,14 @@ class Result_DB(DB):
             "university_id": self.__uni_document["_id"]
         })
         if existing_sub:
-            if not self.__bypass_exist_subject_matching or existing_sub["subject_credit"] != subject_credit or existing_sub["subject_name"] != subject_name or existing_sub["max_internal_marks"] != max_internal_marks or existing_sub["max_external_marks"] != max_external_marks or existing_sub["max_total_marks"] != max_marks or existing_sub["passing_marks"] != passing_marks:
+            if not self.__bypass_exist_subject_matching and (
+                existing_sub["subject_credit"] != subject_credit or
+                existing_sub["subject_name"] != subject_name or
+                existing_sub["max_internal_marks"] != max_internal_marks or
+                existing_sub["max_external_marks"] != max_external_marks or
+                existing_sub["max_total_marks"] != max_marks or
+                existing_sub["passing_marks"] != passing_marks
+            ):
                 result_db_logger.error(
                     f"Subject {subject_id} already exists with different details. "
                     f"Existing - Name: {existing_sub['subject_name']}, Code: {existing_sub['subject_code']}, "

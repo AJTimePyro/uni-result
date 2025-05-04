@@ -70,7 +70,7 @@ class IPU_Result_Parser:
         self.__bypass_exist_subject_matching = BYPASS_EXIST_SUB_MATCHING
     
     async def start(self):
-        self.__res_db = await Result_DB.create(UNIVERSITY_NAME, self.__bypass_exist_subject_matching)
+        self.__res_db = await Result_DB.create(UNIVERSITY_NAME, BYPASS_EXIST_SUB_MATCHING = self.__bypass_exist_subject_matching)
         await self.__parsing_pdf_pages()
     
     async def __parsing_pdf_pages(self):
