@@ -73,7 +73,7 @@ class Result_DB(DB):
     __degree_doc_id: str
     __gdrive_file_id: str | None
 
-    def __init__(self):
+    def __init__(self, BYPASS_EXIST_SUB_MATCHING = False):
         super().__init__()
 
         self.__uni_collec = self._uni_collec
@@ -88,14 +88,15 @@ class Result_DB(DB):
         self.__degree_doc_id = ''
         self.__semester_num = 0
         self.__gdrive_file_id = None
+        self.__bypass_exist_subject_matching = BYPASS_EXIST_SUB_MATCHING
     
     @classmethod
-    async def create(cls, university_name: str = ''):
+    async def create(cls, university_name: str = '', **kwargs):
         """
         Creating instance of Result_DB asyncronously
         """
 
-        self = cls()
+        self = cls(**kwargs)
 
         if university_name:
             await self.connect_to_university(university_name)
@@ -594,9 +595,27 @@ class Result_DB(DB):
             "university_id": self.__uni_document["_id"]
         })
         if existing_sub:
-            if existing_sub["subject_credit"] != subject_credit or existing_sub["subject_name"] != subject_name or existing_sub["max_internal_marks"] != max_internal_marks or existing_sub["max_external_marks"] != max_external_marks or existing_sub["max_total_marks"] != max_marks or existing_sub["passing_marks"] != passing_marks:
-                result_db_logger.error(f"Subject {subject_id} already exists with different marks, subject name: {subject_name}, subject code: {subject_code}")
-                raise ValueError(f"Subject {subject_id} already exists with different marks, subject name: {subject_name}, subject code: {subject_code}")
+            if not self.__bypass_exist_subject_matching or existing_sub["subject_credit"] != subject_credit or existing_sub["subject_name"] != subject_name or existing_sub["max_internal_marks"] != max_internal_marks or existing_sub["max_external_marks"] != max_external_marks or existing_sub["max_total_marks"] != max_marks or existing_sub["passing_marks"] != passing_marks:
+                result_db_logger.error(
+                    f"Subject {subject_id} already exists with different details. "
+                    f"Existing - Name: {existing_sub['subject_name']}, Code: {existing_sub['subject_code']}, "
+                    f"Credits: {existing_sub['subject_credit']}, Max Internal Marks: {existing_sub['max_internal_marks']}, "
+                    f"Max External Marks: {existing_sub['max_external_marks']}, Total Marks: {existing_sub['max_total_marks']}, "
+                    f"Passing Marks: {existing_sub['passing_marks']}. "
+                    f"New - Name: {subject_name}, Code: {subject_code}, Credits: {subject_credit}, "
+                    f"Max Internal Marks: {max_internal_marks}, Max External Marks: {max_external_marks}, "
+                    f"Total Marks: {max_marks}, Passing Marks: {passing_marks}."
+                )
+                raise ValueError(
+                    f"Subject {subject_id} already exists with different details. "
+                    f"Existing - Name: {existing_sub['subject_name']}, Code: {existing_sub['subject_code']}, "
+                    f"Credits: {existing_sub['subject_credit']}, Max Internal Marks: {existing_sub['max_internal_marks']}, "
+                    f"Max External Marks: {existing_sub['max_external_marks']}, Total Marks: {existing_sub['max_total_marks']}, "
+                    f"Passing Marks: {existing_sub['passing_marks']}. "
+                    f"New - Name: {subject_name}, Code: {subject_code}, Credits: {subject_credit}, "
+                    f"Max Internal Marks: {max_internal_marks}, Max External Marks: {max_external_marks}, "
+                    f"Total Marks: {max_marks}, Passing Marks: {passing_marks}."
+                )
             self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
             return existing_sub["subject_id"], existing_sub["_id"]

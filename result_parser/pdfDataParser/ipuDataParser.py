@@ -52,7 +52,7 @@ class IPU_Result_Parser:
     __current_batch_year: int
     __bypass_subject_max_marks_error: bool
 
-    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1, BYPASS_SUB_MAX_MARKS_ERROR = False):
+    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1, BYPASS_SUB_MAX_MARKS_ERROR = False, BYPASS_EXIST_SUB_MATCHING = False):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
@@ -67,9 +67,10 @@ class IPU_Result_Parser:
         self.__save_link_metadata_param = dict()
         self.__current_batch_year = 0
         self.__bypass_subject_max_marks_error = BYPASS_SUB_MAX_MARKS_ERROR
+        self.__bypass_exist_subject_matching = BYPASS_EXIST_SUB_MATCHING
     
     async def start(self):
-        self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
+        self.__res_db = await Result_DB.create(UNIVERSITY_NAME, self.__bypass_exist_subject_matching)
         await self.__parsing_pdf_pages()
     
     async def __parsing_pdf_pages(self):
