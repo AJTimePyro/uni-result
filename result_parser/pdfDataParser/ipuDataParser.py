@@ -278,15 +278,6 @@ class IPU_Result_Parser:
             subject_code = subject_id
         else:
             subject_code = self.__self_cleaning_subject_code(raw_subject_code)
-        
-        subject_credit_search = re.search(r'(\d+(?:\.\d+)?)$', raw_subject_data[paper_id_index + 3])
-        if subject_credit_search is None:
-            parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
-            return False
-        subject_credit = self.__get_float_val(subject_credit_search.group(1))
-
-        if not subject_credit:
-            parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
 
         if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, subject id: {subject_id}, subject code: {subject_code}, subject name: {subject_name}")
