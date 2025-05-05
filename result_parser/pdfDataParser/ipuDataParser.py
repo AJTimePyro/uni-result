@@ -50,9 +50,8 @@ class IPU_Result_Parser:
     __res_db: Result_DB
     __save_link_metadata_param: dict
     __current_batch_year: int
-    __bypass_subject_max_marks_error: bool
 
-    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1, BYPASS_SUB_MAX_MARKS_ERROR = False, BYPASS_EXIST_SUB_MATCHING = False):
+    def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
             parser_logger.error("Page List can't be empty.")
             raise ValueError("Page List can't be empty.")
@@ -66,11 +65,9 @@ class IPU_Result_Parser:
         self.__res_db = None
         self.__save_link_metadata_param = dict()
         self.__current_batch_year = 0
-        self.__bypass_subject_max_marks_error = BYPASS_SUB_MAX_MARKS_ERROR
-        self.__bypass_exist_subject_matching = BYPASS_EXIST_SUB_MATCHING
     
     async def start(self):
-        self.__res_db = await Result_DB.create(UNIVERSITY_NAME, BYPASS_EXIST_SUB_MATCHING = self.__bypass_exist_subject_matching)
+        self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
         await self.__parsing_pdf_pages()
     
     async def __parsing_pdf_pages(self):
@@ -81,9 +78,6 @@ class IPU_Result_Parser:
         parser_logger.info("Starting to parse PDF pages")
         if not self.__skip_till_get_subjects_list():
             return
-        
-        # first_page, page_table = self.__get_next_page()
-        # await self.__start_subjects_parser(first_page, page_table)
 
         while True:
             page_data = self.__get_next_page()

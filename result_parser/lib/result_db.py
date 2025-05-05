@@ -72,7 +72,7 @@ class Result_DB(DB):
     __degree_doc_id: str
     __gdrive_file_id: str | None
 
-    def __init__(self, BYPASS_EXIST_SUB_MATCHING = False):
+    def __init__(self):
         super().__init__()
 
         self.__uni_collec = self._uni_collec
@@ -86,7 +86,6 @@ class Result_DB(DB):
         self.__degree_doc_id = ''
         self.__semester_num = 0
         self.__gdrive_file_id = None
-        self.__bypass_exist_subject_matching = BYPASS_EXIST_SUB_MATCHING
     
     @classmethod
     async def create(cls, university_name: str = '', **kwargs):
@@ -302,14 +301,11 @@ class Result_DB(DB):
         It will add or update a new college for a given degree
         """
 
-        # college_folder_name = f'{college_id} - {college_name}'
-        shift = 'M'
-        updated_degree = None
-
         degree_doc = await self.__degree_collec.find_one({
             "_id": self.__degree_doc_id,
         }, session = self.__session)
 
+        shift = 'M'
         if is_evening_shift:
             shift = 'E'            
 
@@ -322,7 +318,7 @@ class Result_DB(DB):
         # Already college with different shift exist, merge new one with existing one in array and link in degree
         if isCollegeExist:
             result_db_logger.info(f"College {college_id} - {college_name} found with different shift, adding new shift {SHIFT_COLLEGE_MAP[shift]}...")
-            updated_degree = await self.__degree_collec.update_one({
+            await self.__degree_collec.update_one({
                 "_id": self.__degree_doc_id,
                 "colleges": {
                     "$elemMatch": {
@@ -341,7 +337,7 @@ class Result_DB(DB):
         # No college with different shift exist, so just push new one in array and link in degree
         else:
             result_db_logger.info(f"Adding new College {college_id} - {college_name} with {SHIFT_COLLEGE_MAP[shift]} shift...")
-            updated_degree = await self.__degree_collec.update_one({
+            await self.__degree_collec.update_one({
                 "_id": self.__degree_doc_id
             }, {
                 "$push": {
@@ -423,18 +419,7 @@ class Result_DB(DB):
             }
         }, session = self.__session)
 
-        # if updates.modified_count == 0:
-        #     result_db_logger.error(f"While linking result file with degree {self.__degree_doc_id}, degree not updated, {updates}")
-        #     raise Exception("Degree not updated")
-        # else:
         result_db_logger.info(f"Result file linked with degree successfully")
-    
-    def __get_grade_point(self, grade: str) -> int:
-        """
-        Return the grade point of given marks
-        """
-        
-        return GRADE_RATING_GGSIPU.get(str(grade).strip(), np.nan)
 
     def __calculate_cgpa(
         self,
