@@ -351,10 +351,6 @@ class IPU_Result_Parser:
                 "is_evening_shift" : meta_data['is_evening_shift']
             }
         else:
-            for sub_id in sub_id_list:
-                if sub_id[1] != self.__save_link_metadata_param['subject_ids'].get(sub_id[0]):
-                    parser_logger.error(f"Subject id mismatch in page no. {self.__pdf_page_index + 1}, raw data: {page_data}, subject id: {sub_id[0]}, subject doc id: {sub_id[1]}, existing subject doc id: {self.__save_link_metadata_param['subject_ids'].get(sub_id[0])}")
-                    raise ValueError(f"Subject id mismatch in page no. {self.__pdf_page_index + 1}, raw data: {page_data}, subject id: {sub_id[0]}, subject doc id: {sub_id[1]}, existing subject doc id: {self.__save_link_metadata_param['subject_ids'].get(sub_id[0])}")
             self.__save_link_metadata_param['subject_ids'].extend(sub_id_list)
 
         if meta_data['batch'] == 0:
