@@ -476,7 +476,7 @@ class IPU_Result_Parser:
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
         self.__students_result_list[self.__students_result_index]['name'] = student_name
     
-    def __extract_subject_id(self, raw_subject_id_str: str):
+    def __extract_subject_id_credit(self, raw_subject_id_str: str):
         """
         It will extract subject id from raw subject id string
         """
@@ -488,9 +488,13 @@ class IPU_Result_Parser:
         credit_match = re.search(r'\((\d+(?:\.\d+)?)\)', raw_subject_id_str)
         subject_part = raw_subject_id_str[:credit_match.start()] if credit_match else raw_subject_id_str
 
+        # Credit
+        credit = credit_match.group(1) if credit_match else None
+        credit = self.__get_float_val(credit)
+
         # Normalize subject code: remove duplicate dashes, trim spaces
         subject_code = subject_part.replace(' ', '')
-        return subject_code
+        return subject_code, credit
 
     async def __extract_student_marks(
         self,
@@ -510,7 +514,10 @@ class IPU_Result_Parser:
                 subject_start_index += 2
                 continue
             
-            subject_id = self.__extract_subject_id(student_n_subject_detail[subject_start_index])
+            subject_id, subject_credit = self.__extract_subject_id_credit(student_n_subject_detail[subject_start_index])
+            if not subject_credit:
+                parser_logger.error(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
+                raise ValueError(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
             if not subject_id:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
@@ -535,7 +542,7 @@ class IPU_Result_Parser:
             internal_marks = self.__get_int_val(student_int_ext_marks[subject_start_index])
             external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
 
-            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
+            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit]
             student_grade_list.append(grade)
             subject_start_index += 2
         

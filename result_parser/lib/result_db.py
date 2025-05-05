@@ -597,7 +597,6 @@ class Result_DB(DB):
         if existing_sub:
             if not self.__bypass_exist_subject_matching and (
                 existing_sub["subject_credit"] != subject_credit or
-                existing_sub["subject_name"].lower() != subject_name.lower() or
                 existing_sub["max_internal_marks"] != max_internal_marks or
                 existing_sub["max_external_marks"] != max_external_marks or
                 existing_sub["max_total_marks"] != max_marks or
@@ -623,6 +622,8 @@ class Result_DB(DB):
                     f"Max Internal Marks: {max_internal_marks}, Max External Marks: {max_external_marks}, "
                     f"Total Marks: {max_marks}, Passing Marks: {passing_marks}."
                 )
+            elif subject_name.lower() != existing_sub["subject_name"].lower():
+                result_db_logger.warning(f"Subject name is different from existing name. Let's be this way..., existing name: {existing_sub['subject_name']}, new name: {subject_name}")
             self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
             return existing_sub["subject_id"], existing_sub["_id"]
