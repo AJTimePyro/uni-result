@@ -68,7 +68,6 @@ class Result_DB(DB):
     __gdrive_upload_folder_id: str
     __semester_num: int
     __college_id: str
-    __subject_credits_dict: dict[str, int]
     subject_id_code_map: dict[str, str]
     __degree_doc_id: str
     __gdrive_file_id: str | None
@@ -83,7 +82,6 @@ class Result_DB(DB):
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
-        self.__subject_credits_dict = {}
         self.subject_id_code_map = {}
         self.__degree_doc_id = ''
         self.__semester_num = 0
@@ -446,49 +444,48 @@ class Result_DB(DB):
         It will calculate CGPA from result dataframe
         """
 
-        # Function to extract marks and grades
-        def extract_marks_and_grade(s):
+        # Parse list-like strings safely
+        def safe_literal_eval(x):
             try:
-                if isinstance(s, str):
-                    values = literal_eval(s)  # Convert string list to actual list
-                    return np.sum(values[:-1]), values[-1]  # Sum of marks, last element is grade
-                elif isinstance(s, list):
-                    return np.sum(s[:-1]), s[-1]
-                else:
-                    raise Exception(f"Invalid data type, expected str or list, got {type(s)}, value: {s}")
-            except Exception as e:
-                return np.nan, np.nan  # Handle missing or malformed data
+                return literal_eval(x)
+            except (ValueError, SyntaxError):
+                return None  # or skip this record
 
-        # Identify relevant subject columns
-        subject_cols = [col for col in result_df.columns if col.startswith("sub_") and col.split('_')[-1] in self.__subject_credits_dict]
+        subject_columns = [col for col in result_df.columns if col.startswith('sub_')]
 
-        # Extract subject credits
-        credits = np.array([self.__subject_credits_dict[col.split('_')[-1]] for col in subject_cols])
+        result_df['total_credits'] = 0
+        result_df['weighted_grade_points'] = 0.0
 
-        # Apply extraction in bulk
-        marks_and_grades = result_df[subject_cols].map(extract_marks_and_grade)
-        marks_df = marks_and_grades.map(lambda x: x[0])  # Extract marks
-        grades_df = marks_and_grades.map(lambda x: x[1])  # Extract grades
+        for sub in subject_columns:
+            # Drop missing and empty values safely
+            valid = result_df[sub].dropna()
+            valid = valid[valid.str.strip() != '']
 
-        # Convert grades to grade points
-        grade_points_df = grades_df.map(lambda g: self.__get_grade_point(g))
-        grade_points_df = grade_points_df.astype(float)
+            if valid.empty:
+                continue
 
-        # Compute total marks scored (skip NaN values)
-        result_df["total_marks_scored"] = marks_df.sum(axis=1, skipna=True).astype(int)
+            parsed = valid.apply(safe_literal_eval)
+            parsed = parsed.dropna()
 
-        # Compute maximum marks possible (100 per valid subject)
-        result_df["max_marks_possible"] = marks_df.notna().sum(axis=1) * 100
+            if parsed.empty:
+                continue
 
-        # Compute weighted sum and total credits (vectorized)
-        weighted_sum = np.nansum(grade_points_df.values * credits, axis=1)
-        total_credits = np.nansum(~np.isnan(grade_points_df.values) * credits, axis=1)
+            internal = parsed.apply(lambda x: x[0])
+            external = parsed.apply(lambda x: x[1])
+            grade    = parsed.apply(lambda x: x[2])
+            credit   = parsed.apply(lambda x: x[3])
 
-        # Prevent division by zero or NaN issues
-        total_credits = np.where(total_credits == 0, np.nan, total_credits)
+            result_df.loc[parsed.index, 'total_marks_scored'] += internal + external
+            result_df.loc[parsed.index, 'max_marks_possible'] += 100
+            result_df.loc[parsed.index, 'total_credits'] += credit
+            result_df.loc[parsed.index, 'weighted_grade_points'] += credit * grade.map(GRADE_RATING_GGSIPU)
+        
+        # Compute final CGPA
+        result_df['cgpa'] = (result_df['weighted_grade_points'] / result_df['total_credits']).round(2)
+        result_df['cgpa'] = result_df['cgpa'].where(result_df['total_credits'] > 0, np.nan)
 
-        # Compute CGPA safely
-        result_df["cgpa"] = np.where(total_credits > 0, np.round(weighted_sum / total_credits, 2), np.nan)
+        # Clean up
+        result_df.drop(columns=['total_credits', 'weighted_grade_points'], inplace=True)
     
     def __merge_dataframes(self, original_df: pd.DataFrame, new_df: pd.DataFrame):
         """
@@ -552,7 +549,6 @@ class Result_DB(DB):
         It will reset subject data list
         """
 
-        self.__subject_credits_dict.clear()
         self.subject_id_code_map.clear()
 
     async def link_all_metadata(
