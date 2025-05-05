@@ -360,7 +360,8 @@ class Result_DB(DB):
 
     async def __add_subjects_to_degree(
         self,
-        subject_ids: list[tuple[str, str]]
+        subject_ids: list[tuple[str, str]],
+        batch_year: int
     ):
         """
         It will add subjects to respected degree in a single batch update
@@ -382,6 +383,19 @@ class Result_DB(DB):
         if not new_subjects_to_add:
             result_db_logger.info(f"Subjects already added to degree")
             return
+        
+        # Linking subjects with batch year
+        await self.__subject_collec.update_many(
+            {
+                "_id": {
+                    "$in": list(new_subjects_to_add.values())
+                }
+            }, {
+                "$addToSet": {
+                    "batch_years": batch_year
+                }
+            }
+        )
         
         updated_degree = await self.__degree_collec.update_one(
             {
@@ -561,7 +575,7 @@ class Result_DB(DB):
         
         batch_doc_id = await self.__create_new_batch(batch)
         self.__degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name, semester_num)
-        await self.__add_subjects_to_degree(subject_ids)
+        await self.__add_subjects_to_degree(subject_ids, batch)
 
         await self.start_transaction()
         await self.__adding_updating_new_college_degree(college_id, college_name, semester_num, is_evening_shift)
@@ -571,12 +585,7 @@ class Result_DB(DB):
         self,
         subject_name: str,
         subject_code: str,
-        subject_id: str,
-        subject_credit: int | float,
-        max_internal_marks: int,
-        max_external_marks: int,
-        passing_marks: int,
-        max_marks: int
+        subject_id: str
     ):
         """
         It will create new subject in db and return subject id and subject doc id, and if it is already created then it will just skip
@@ -595,36 +604,8 @@ class Result_DB(DB):
             "university_id": self.__uni_document["_id"]
         })
         if existing_sub:
-            if not self.__bypass_exist_subject_matching and (
-                existing_sub["subject_credit"] != subject_credit or
-                existing_sub["max_internal_marks"] != max_internal_marks or
-                existing_sub["max_external_marks"] != max_external_marks or
-                existing_sub["max_total_marks"] != max_marks or
-                existing_sub["passing_marks"] != passing_marks
-            ):
-                result_db_logger.error(
-                    f"Subject {subject_id} already exists with different details. "
-                    f"Existing - Name: {existing_sub['subject_name']}, Code: {existing_sub['subject_code']}, "
-                    f"Credits: {existing_sub['subject_credit']}, Max Internal Marks: {existing_sub['max_internal_marks']}, "
-                    f"Max External Marks: {existing_sub['max_external_marks']}, Total Marks: {existing_sub['max_total_marks']}, "
-                    f"Passing Marks: {existing_sub['passing_marks']}. "
-                    f"New - Name: {subject_name}, Code: {subject_code}, Credits: {subject_credit}, "
-                    f"Max Internal Marks: {max_internal_marks}, Max External Marks: {max_external_marks}, "
-                    f"Total Marks: {max_marks}, Passing Marks: {passing_marks}."
-                )
-                raise ValueError(
-                    f"Subject {subject_id} already exists with different details. "
-                    f"Existing - Name: {existing_sub['subject_name']}, Code: {existing_sub['subject_code']}, "
-                    f"Credits: {existing_sub['subject_credit']}, Max Internal Marks: {existing_sub['max_internal_marks']}, "
-                    f"Max External Marks: {existing_sub['max_external_marks']}, Total Marks: {existing_sub['max_total_marks']}, "
-                    f"Passing Marks: {existing_sub['passing_marks']}. "
-                    f"New - Name: {subject_name}, Code: {subject_code}, Credits: {subject_credit}, "
-                    f"Max Internal Marks: {max_internal_marks}, Max External Marks: {max_external_marks}, "
-                    f"Total Marks: {max_marks}, Passing Marks: {passing_marks}."
-                )
-            elif subject_name.lower() != existing_sub["subject_name"].lower():
-                result_db_logger.warning(f"Subject name is different from existing name. Let's be this way..., existing name: {existing_sub['subject_name']}, new name: {subject_name}")
-            self.__subject_credits_dict[existing_sub["subject_id"]] = existing_sub["subject_credit"]
+            if subject_name.lower() != existing_sub["subject_name"].lower():
+                result_db_logger.warning(f"Subject name is different from existing name. Let's be this way..., existing name: {existing_sub['subject_name']}, and other name: {subject_name}")
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
             return existing_sub["subject_id"], existing_sub["_id"]
 
@@ -632,17 +613,10 @@ class Result_DB(DB):
             "subject_name": subject_name,
             "subject_code": subject_code,
             "subject_id": subject_id,
-            "subject_credit": subject_credit,
-            "max_internal_marks": max_internal_marks,
-            "max_external_marks": max_external_marks,
-            "max_total_marks": max_marks,
-            "passing_marks": passing_marks,
+            "batch_years": [],
             "university_id": self.__uni_document["_id"]
         })
         result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
-
-        # Storing subject credits to calulate CGPA in future
-        self.__subject_credits_dict[subject_id] = subject_credit
 
         # Storing for conversion of subject code to subject id
         self.subject_id_code_map[subject_code] = subject_id
@@ -705,14 +679,20 @@ class Result_DB(DB):
         await self.commit_transaction()
         self.__final_folder_path_tracker = self.__uni_document["name"]
     
-    async def get_subject_id_by_code(self, subject_code: str) -> str:
+    async def get_subject_id_by_code(self, subject_code: str, batch_year: int) -> str:
         if subject_code in self.subject_id_code_map:
             return self.subject_id_code_map[subject_code]
         else:
-            sub = await self.__subject_collec.find_one({"subject_code": subject_code})
-            if sub:
-                self.__subject_credits_dict[sub["subject_id"]] = sub["subject_credit"]
+            sub = await self.__subject_collec.find({
+                "subject_code": subject_code,
+                "batch_years": batch_year
+            }).to_list(length=None)
+            if len(sub) == 1:
+                sub = sub[0]
                 self.subject_id_code_map[subject_code] = sub["subject_id"]
                 return sub["subject_id"]
-            else:
+            elif len(sub) == 0:
                 return None
+            else:
+                result_db_logger.error(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
+                raise ValueError(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
