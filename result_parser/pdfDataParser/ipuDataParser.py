@@ -277,7 +277,9 @@ class IPU_Result_Parser:
             subject_code = subject_id
         else:
             raw_subject_code = raw_subject_code.strip()
-            if raw_subject_code.isnumeric():
+            if raw_subject_code.isdigit():
+                parser_logger.error(f"Subject code is number in subject page, raw data: {raw_subject_data}")
+                raise ValueError(f"Subject code is number in subject page, raw data: {raw_subject_data}")
                 subject_code = raw_subject_code
             else:
                 subject_code = self.__self_cleaning_subject_code(raw_subject_code)
