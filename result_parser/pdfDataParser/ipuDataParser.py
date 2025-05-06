@@ -276,7 +276,11 @@ class IPU_Result_Parser:
             parser_logger.warning(f"Subject code is same as subject id in subject page. Let's be this way..., raw data: {raw_subject_data}")
             subject_code = subject_id
         else:
-            subject_code = self.__self_cleaning_subject_code(raw_subject_code)
+            raw_subject_code = raw_subject_code.strip()
+            if raw_subject_code.isnumeric():
+                subject_code = raw_subject_code
+            else:
+                subject_code = self.__self_cleaning_subject_code(raw_subject_code)
         
         if subject_code.lower() in ['tt', 'pt']:
             parser_logger.warning(f"Subject code is TT or PT(Theory or Practical Total) in subject page. Skipping it... raw data: {raw_subject_data}")
