@@ -515,16 +515,40 @@ class IPU_Result_Parser:
                         raise ValueError(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
                 else:
                     subject_id = self.__res_db.subject_id_code_map[subject_id]
+
+            internal_marks = self.__get_int_val(student_int_ext_marks[subject_start_index])
+            external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
             
             grade = 'F' # If no match found means, it's fail
             grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
             if grade_match:
                 grade = grade_match.group(1).strip()
-            
-            internal_marks = self.__get_int_val(student_int_ext_marks[subject_start_index])
-            external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
+            else:
+                grade = self.__marks_to_grade(internal_marks + external_marks, subject_id)
 
             self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit]
             student_grade_list.append(grade)
             subject_start_index += 2
+
+    def __marks_to_grade(self, marks: int, sub_id: str):
+        """
+        This will convert marks to grade
+        """
+        
+        marks_in_100 = marks
+        if marks_in_100 != 100:
+            max_marks = self.__res_db.sub_id_max_marks_map.get(sub_id, None)
+            if max_marks is None:
+                parser_logger.error(f"Subject ID not found in database, raw data: {sub_id}, subject list: {self.__res_db.sub_id_max_marks_map}")
+                raise ValueError(f"Subject ID not found in database, raw data: {sub_id}, subject list: {self.__res_db.sub_id_max_marks_map}")
+            
+            marks_in_100 = (marks / max_marks) * 100
+        
+        grade_thresholds = [
+            (90, 'O'), (75, 'A+'), (65, 'A'),
+            (55, 'B+'), (50, 'B'), (45, 'C'), (40, 'P')
+        ]
+        
+        return next((g for threshold, g in grade_thresholds if marks_in_100 >= threshold), 'F')
+
         

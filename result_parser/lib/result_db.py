@@ -71,7 +71,7 @@ class Result_DB(DB):
     subject_id_code_map: dict[str, str]
     __degree_doc_id: str
     __gdrive_file_id: str | None
-    __sub_id_max_marks_map: dict[str, int]
+    sub_id_max_marks_map: dict[str, int]
 
     def __init__(self):
         super().__init__()
@@ -87,7 +87,7 @@ class Result_DB(DB):
         self.__degree_doc_id = ''
         self.__semester_num = 0
         self.__gdrive_file_id = None
-        self.__sub_id_max_marks_map = {}
+        self.sub_id_max_marks_map = {}
     
     @classmethod
     async def create(cls, university_name: str = '', **kwargs):
@@ -469,7 +469,7 @@ class Result_DB(DB):
             grade    = parsed.apply(lambda x: x[2])
             credit   = parsed.apply(lambda x: x[3])
 
-            sub_max_marks = self.__sub_id_max_marks_map.get(sub_id, None)
+            sub_max_marks = self.sub_id_max_marks_map.get(sub_id, None)
             if sub_max_marks is None:
                 result_db_logger.error(f"Subject {sub_id} not found in max marks map")
                 raise ValueError(f"Subject {sub_id} not found in max marks map")
@@ -603,7 +603,7 @@ class Result_DB(DB):
             if subject_name.lower() != existing_sub["subject_name"].lower():
                 result_db_logger.warning(f"Subject name is different from existing name. Let's be this way..., existing name: {existing_sub['subject_name']}, and other name: {subject_name}")
             self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
-            self.__sub_id_max_marks_map[subject_id] = existing_sub["max_marks"]
+            self.sub_id_max_marks_map[subject_id] = existing_sub["max_marks"]
             return existing_sub["subject_id"], existing_sub["_id"]
 
         sub_data = await self.__subject_collec.insert_one({
@@ -618,7 +618,7 @@ class Result_DB(DB):
 
         # Storing for conversion of subject code to subject id and subject id to max marks map
         self.subject_id_code_map[subject_code] = subject_id
-        self.__sub_id_max_marks_map[subject_id] = max_marks
+        self.sub_id_max_marks_map[subject_id] = max_marks
 
         return subject_id, sub_data.inserted_id
     
