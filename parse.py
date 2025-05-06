@@ -87,6 +87,7 @@ class Parse:
             automation_logger.error("Invalid index")
             return
         
+        error_json_content = []
         error_json_path = os.path.join(ENV.LOG_FOLDER_PATH, "error_parsing.json")
         if os.path.isfile(error_json_path):
             with open(error_json_path, "r") as f:

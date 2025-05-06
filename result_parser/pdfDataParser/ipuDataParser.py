@@ -282,8 +282,20 @@ class IPU_Result_Parser:
         if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, subject id: {subject_id}, subject code: {subject_code}, subject name: {subject_name}")
             return None
+        
+        raw_internal_marks = raw_subject_data[paper_id_index + 8]
+        raw_external_marks = raw_subject_data[paper_id_index + 9]
+        raw_max_marks = raw_subject_data[paper_id_index + 10]
 
-        return await self.__res_db.add_subject(subject_name, subject_code, subject_id)
+        subject_internal_marks = self.__get_int_val(raw_internal_marks)
+        subject_external_marks = self.__get_int_val(raw_external_marks)
+        subject_max_marks = self.__get_int_val(raw_max_marks)
+
+        if subject_max_marks != subject_internal_marks + subject_external_marks:
+            parser_logger.error(f"Subject total marks is not equal to sum of subject internal marks and subject external marks in page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            raise ValueError("Subject total marks is not equal to sum of subject internal marks and subject external marks")
+
+        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_max_marks)
     
     async def __subjects_data_parser(self, raw_subjects_table: list[list[str]]):
         """
@@ -445,7 +457,7 @@ class IPU_Result_Parser:
         subject_part = raw_subject_id_str[:credit_match.start()] if credit_match else raw_subject_id_str
 
         # Credit
-        credit = credit_match.group(1) if credit_match else None
+        credit = credit_match.group(1) if credit_match else ''
         credit = self.__get_float_val(credit)
 
         # Normalize subject code: remove duplicate dashes, trim spaces
@@ -472,8 +484,7 @@ class IPU_Result_Parser:
             
             subject_id, subject_credit = self.__extract_subject_id_credit(student_n_subject_detail[subject_start_index])
             if not subject_credit:
-                parser_logger.error(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
-                raise ValueError(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
+                parser_logger.warning(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
             if not subject_id:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
