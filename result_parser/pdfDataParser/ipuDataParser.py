@@ -161,9 +161,6 @@ class IPU_Result_Parser:
             semester_num = self.__get_int_val(sem_str)
         else:
             semester_num = SEMESTER_STR_TO_NUM.get(sem_str.lower(), 0)
-            if semester_num == 0:
-                parser_logger.error(f"Invalid Semester found... {raw_exam_meta_data}")
-                raise ValueError("Invalid Semester Number...")
 
         updated_college_name = normalize_spacing(college_name)
         
@@ -351,6 +348,10 @@ class IPU_Result_Parser:
 
             parser_logger.warning(f"Skipping result page due to degree id: {meta_data['degree_code']}, skipped from page no. {start_page + 1} to page no. {end_page + 1}")
             return
+        
+        if meta_data['semester_num'] == 0:
+            parser_logger.error(f"Invalid Semester found... {page_data}")
+            raise ValueError("Invalid Semester Number...")
         
         if not (self.__save_link_metadata_param and (
             meta_data['degree_code'] == self.__save_link_metadata_param['degree_id'] and
