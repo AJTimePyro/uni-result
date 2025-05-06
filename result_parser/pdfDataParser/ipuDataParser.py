@@ -41,6 +41,8 @@ SEMESTER_STR_TO_NUM = {
 
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
 
+DEGREE_ID_SKIP_LIST = ['375']
+
 class IPU_Result_Parser:
     __pdf_pages_list: list[Page]
     __pdf_page_index: int
@@ -104,7 +106,7 @@ class IPU_Result_Parser:
     
     async def __storing_result(self):        
         if len(self.__students_result_list) == 0:
-            parser_logger.warning("No results to store, skipping it...")
+            parser_logger.info("No results to store, skipping it...")
         else:
             parser_logger.info("Storing and uploading results...")
             await self.__res_db.store_and_upload_result(
@@ -342,6 +344,14 @@ class IPU_Result_Parser:
             self.__skip_till_get_subjects_list()
             return
         
+        if meta_data['degree_code'] in DEGREE_ID_SKIP_LIST:
+            start_page = self.__pdf_page_index
+            self.__skip_till_get_subjects_list()
+            end_page = self.__pdf_page_index
+
+            parser_logger.warning(f"Skipping result page due to degree id: {meta_data['degree_code']}, skipped from page no. {start_page + 1} to page no. {end_page + 1}")
+            return
+        
         if not (self.__save_link_metadata_param and (
             meta_data['degree_code'] == self.__save_link_metadata_param['degree_id'] and
             meta_data['college_code'] == self.__save_link_metadata_param['college_id'] and
@@ -382,7 +392,7 @@ class IPU_Result_Parser:
             parser_logger.error(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
             raise ValueError(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
         elif batch_year < self.__starting_session:
-            parser_logger.warning(f"Batch year {batch_year} is less than starting session year {self.__starting_session}, skipping page no. {self.__pdf_page_index + 1}...")
+            parser_logger.info(f"Batch year {batch_year} is less than starting session year {self.__starting_session}, skipping page no. {self.__pdf_page_index + 1}...")
             return
         
         if self.__current_batch_year != batch_year:
