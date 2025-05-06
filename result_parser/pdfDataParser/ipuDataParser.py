@@ -278,6 +278,10 @@ class IPU_Result_Parser:
             subject_code = subject_id
         else:
             subject_code = self.__self_cleaning_subject_code(raw_subject_code)
+        
+        if subject_code.lower() in ['tt', 'pt']:
+            parser_logger.warning(f"Subject code is TT or PT(Theory or Practical Total) in subject page. Skipping it... raw data: {raw_subject_data}")
+            return None
 
         if not (subject_id and subject_code and subject_name):
             parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, subject id: {subject_id}, subject code: {subject_code}, subject name: {subject_name}")
