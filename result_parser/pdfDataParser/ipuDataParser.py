@@ -41,7 +41,7 @@ SEMESTER_STR_TO_NUM = {
 
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
 
-DEGREE_ID_SKIP_LIST = ['375']
+DEGREE_ID_SKIP_LIST = ['375', '383', '384', '386', '387']
 
 class IPU_Result_Parser:
     __pdf_pages_list: list[Page]
