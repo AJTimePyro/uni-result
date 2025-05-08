@@ -376,8 +376,7 @@ class Result_DB(DB):
             if subject_id not in existing_degree["subjects"]:
                 new_subjects_to_add[f"subjects.{subject_id}"] = subject_doc_id
             elif existing_degree["subjects"][subject_id] != subject_doc_id:
-                result_db_logger.error(f"Subject {subject_id} already exist with different document id, existing id: {existing_degree['subjects'][subject_id]}, new id: {subject_doc_id}")
-                raise ValueError(f"Subject {subject_id} already exist with different document id, existing id: {existing_degree['subjects'][subject_id]}, new id: {subject_doc_id}")
+                result_db_logger.warning(f"Subject {subject_id} already exist with different document id, existing id: {existing_degree['subjects'][subject_id]}, new id: {subject_doc_id}")
             
         if not new_subjects_to_add:
             result_db_logger.info(f"Subjects already added to degree")

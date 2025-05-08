@@ -114,7 +114,6 @@ class Parse:
                 error_json_content.append(error_message)
                 with open(error_json_path, "w") as f:
                     json.dump(error_json_content, f, indent=4)
-                return
             else:
                 endTime = time.time()
                 automation_logger.info(f"Successfully parsed pdf file index no. {input_index}, pdf name: {json_data['title']}, pdf link: {json_data['link']}, time taken: {endTime - startTime} seconds")
