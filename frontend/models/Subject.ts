@@ -13,8 +13,6 @@ export interface ISubject extends Document {
 
 const SubjectSchema = new Schema<ISubject>({
     subject_id: { type: String, required: true },
-    max_external_marks: { type: Number, required: true },
-    max_internal_marks: { type: Number, required: true },
     passing_marks: { type: Number, required: true },
     subject_code: { type: String, required: true },
     subject_credit: { type: Number, required: true },
