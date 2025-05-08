@@ -251,8 +251,9 @@ class IPU_Result_Parser:
         It will remove all the extra spaces from subject code
         """
 
-        # Fix line breaks inside words (e.g., '20\n1' -> '201', 'AV\nV' -> 'AVV')
+        # Fix line breaks inside words (e.g., '20\n1' -> '201', 'AV\nV' -> 'AVV') and remove dots between numbers (e.g., 'B 3.3' -> 'B33')
         text = re.sub(r'(?<=\w)[\s\n]+(?=\w)', '', raw_subject_code)
+        text = re.sub(r'(?<=\d)[.\n]+(?=\d)', '', text)
 
         # Pattern pattern:
         # - Starts with letters
