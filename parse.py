@@ -62,8 +62,8 @@ class Parse:
         await self.parse_func(pdf_path, page_num = pdf_page_num)
     
     async def auto_parse(self):
-        json_data = input("Enter the json file path: ")
-        with open(json_data, "r") as f:
+        json_file = input("Enter the json file path: ")
+        with open(json_file, "r") as f:
             json_content = json.load(f)
         
         if not json_content:
@@ -103,6 +103,7 @@ class Parse:
                 await self.parse_func(pdf_url=json_data["link"], page_num = page_num)
             except Exception as err:
                 error_message = {
+                    "data_file_path": json_file,
                     "index": input_index,
                     "title": json_data['title'],
                     "link": json_data['link'],

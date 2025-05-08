@@ -271,8 +271,11 @@ class IPU_Result_Parser:
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
 
-        subject_id = raw_subject_data[paper_id_index].strip()
+        subject_id = raw_subject_data[paper_id_index]
         subject_name = raw_subject_data[paper_id_index + 2].strip()
+
+        # Subject id should be only numbers
+        subject_id = re.sub(r'\D', '', subject_id).strip()
 
         raw_subject_code = raw_subject_data[paper_id_index + 1].strip()
         if raw_subject_code == subject_id:
