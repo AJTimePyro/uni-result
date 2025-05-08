@@ -191,6 +191,8 @@ class IPU_Result_Parser:
         Return integer value from given string, if string is not integer then it will raise exception
         """
 
+        if isinstance(val, int):
+            return val
         if val.isdigit():
             return int(val.strip())
         else:
@@ -296,6 +298,11 @@ class IPU_Result_Parser:
         raw_internal_marks = raw_subject_data[paper_id_index + 8]
         raw_external_marks = raw_subject_data[paper_id_index + 9]
         raw_max_marks = raw_subject_data[paper_id_index + 10]
+
+        if "+" in raw_internal_marks:
+            raw_internal_marks = eval(raw_internal_marks)
+        if "+" in raw_external_marks:
+            raw_external_marks = eval(raw_external_marks)
 
         subject_internal_marks = self.__get_int_val(raw_internal_marks)
         subject_external_marks = self.__get_int_val(raw_external_marks)
