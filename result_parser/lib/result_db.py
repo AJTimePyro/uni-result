@@ -445,8 +445,9 @@ class Result_DB(DB):
         # Parse list-like strings safely
         def safe_literal_eval(x):
             try:
-                return literal_eval(x)
-            except (ValueError, SyntaxError):
+                return literal_eval(str(x))
+            except (ValueError, SyntaxError) as e:
+                print(e)
                 return None  # or skip this record
 
         subject_columns = [col for col in result_df.columns if col.startswith('sub_')]
@@ -651,12 +652,14 @@ class Result_DB(DB):
         student_result_df['college_id'] = ''
         student_result_df = student_result_df.astype({"roll_num": "string", "college_id": "string"})
 
-        # Add college id and also calculate cgpa
+        # Add college id
         student_result_df['college_id'] = self.__college_id
-        self.__calculate_cgpa(student_result_df)
 
         # If file doesn't exist, upload it
         if not self.__gdrive_file_id:
+            # Calculate cgpa
+            self.__calculate_cgpa(student_result_df)
+
             result_db_logger.info(f"Storing new result...")
             student_result_df.to_csv(file_path, index = False)
             result_gdrive_id = self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
