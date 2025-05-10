@@ -56,7 +56,7 @@ const RanklistTable: React.FC<RanklistTableProps> = ({ students, setSelectedStud
                                     {`${student.total_marks_scored}/${student.max_marks_possible}`}
                                 </td>
                                 <td className="p-2 md:p-4 text-center font-semibold text-sm md:text-base whitespace-nowrap">
-                                    {student.cgpa.toFixed(2)}
+                                    {student.cgpa?.toFixed(2) || 0}
                                 </td>
                             </tr>
                         ))}

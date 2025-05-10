@@ -10,12 +10,8 @@ interface Student {
 
 interface Subject {
     subject_id: string;
-    max_external_marks: number;
-    max_internal_marks: number;
-    max_total_marks: number;
-    passing_marks: number;
+    max_marks: number;
     subject_code: string;
-    subject_credit: number;
     subject_name: string;
 }
 

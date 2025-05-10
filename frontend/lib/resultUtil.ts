@@ -5,11 +5,12 @@ export const parseMarkData = (markString: string) => {
         return {
             internal: parseInt(parts[0]),
             external: parseInt(parts[1]),
-            grade: parts[2].replace(/'/g, '')
+            grade: parts[2].replace(/'/g, ''),
+            credit: parseInt(parts[3])
         };
     } catch (e) {
         console.error(e);
-        return { internal: 0, external: 0, grade: 'N/A' };
+        return { internal: 0, external: 0, grade: 'N/A', credit: 0 };
     }
 };
 

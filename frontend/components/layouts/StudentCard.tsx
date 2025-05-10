@@ -22,6 +22,7 @@ interface SubjectWithMarks extends Subject {
     external_marks: number;
     grade: string;
     total_marks: number;
+    subject_credit: number;
 }
 
 interface StudentCardProps {
@@ -52,7 +53,7 @@ const ScoreSummary = memo(({ totalScore, maxScore, cgpa }: { totalScore: number,
         </div>
         <div>
             <p className="text-sm text-blue-300">CGPA</p>
-            <p className="text-xl font-bold text-white">{cgpa.toFixed(2)}</p>
+            <p className="text-xl font-bold text-white">{cgpa?.toFixed(2) || 0}</p>
         </div>
         <div>
             <p className="text-sm text-blue-300">Total Marks</p>
@@ -238,13 +239,14 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
             .filter(subject => studentData[`sub_${subject.subject_id}`])
             .map(subject => {
                 const subKey = `sub_${subject.subject_id}`;
-                const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F']");
+                const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F', 0]");
 
                 return {
                     ...subject,
                     internal_marks: markData.internal,
                     external_marks: markData.external,
                     grade: markData.grade,
+                    subject_credit: markData.credit,
                     total_marks: markData.internal + markData.external
                 };
             });
