@@ -446,8 +446,7 @@ class Result_DB(DB):
         def safe_literal_eval(x):
             try:
                 return literal_eval(str(x))
-            except (ValueError, SyntaxError) as e:
-                print(e)
+            except (ValueError, SyntaxError):
                 return None  # or skip this record
 
         subject_columns = [col for col in result_df.columns if col.startswith('sub_')]
