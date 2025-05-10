@@ -1,11 +1,14 @@
 interface Student {
     name: string;
-    rank?: number;
     roll_num: string;
     cgpa: string;
     max_marks_possible: string;
     total_marks_scored: string;
     [key: string]: number | string | undefined;
+}
+
+interface StudentWithRank extends Student {
+    rank: number;
 }
 
 interface Subject {

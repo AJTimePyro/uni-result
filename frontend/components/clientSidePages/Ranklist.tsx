@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS, fetchRanklistResult } from "@/queries";
 import StudentCard from "../layouts/StudentCard";
 
-const mockRanklistData: Student[] = [
+const mockRanklistData: StudentWithRank[] = [
     {
         rank: 1,
         name: "Aisha Patel",
@@ -52,7 +52,7 @@ export default function RankListClientSide() {
         degree_doc_id: '',
         result_file_id: ''
     });
-    const [rankListResult, setRankListResult] = useState<Student[]>(mockRanklistData)
+    const [rankListResult, setRankListResult] = useState<StudentWithRank[]>(mockRanklistData)
     const [shouldRefetch, setShouldRefetch] = useState(false)
     const [subjectData, setSubjectData] = useState<Subject[]>([])
     const [studentModalOpen, setStudentModalOpen] = useState(false)

@@ -148,6 +148,7 @@ const formatScore = (scoreStr: string) => {
             gradePoint: scoreArray[3]
         };
     } catch (e) {
+        console.error(e);
         return null;
     }
 };
@@ -270,7 +271,7 @@ const StudentProfile = ({ studentData }: { studentData: Student }) => {
         for (const semKey in mockData.results) {
 
             if (mockData.results[semKey].results?.cgpa) {
-                totalCGPA += parseFloat(mockData.results[semKey].results?.cgpa!);
+                totalCGPA += parseFloat(mockData.results[semKey].results?.cgpa || '0');
                 semesterCount++;
             }
         }
