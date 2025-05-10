@@ -103,7 +103,7 @@ class Parse:
                 await self.parse_func(pdf_url=json_data["link"], page_num = page_num)
             except Exception as err:
                 error_message = {
-                    "data_file_path": json_file,
+                    "json_file": json_file,
                     "index": input_index,
                     "title": json_data['title'],
                     "link": json_data['link'],
