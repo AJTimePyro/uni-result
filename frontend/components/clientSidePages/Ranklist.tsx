@@ -15,33 +15,33 @@ const mockRanklistData: Student[] = [
         rank: 1,
         name: "Aisha Patel",
         roll_num: "2021CSE001",
-        cgpa: 9.8,
-        total_marks_scored: 1200,
-        max_marks_possible: 1500
+        cgpa: '9.8',
+        total_marks_scored: '1200',
+        max_marks_possible: '1500'
     },
     {
         rank: 2,
         name: "Rohan Sharma",
         roll_num: "2021ECE005",
-        cgpa: 9.6,
-        total_marks_scored: 1200,
-        max_marks_possible: 1500
+        cgpa: '9.6',
+        total_marks_scored: '1200',
+        max_marks_possible: '1500'
     },
     {
         rank: 3,
         name: "Priya Gupta",
         roll_num: "2021MECH010",
-        cgpa: 9.5,
-        total_marks_scored: 1200,
-        max_marks_possible: 1500
+        cgpa: '9.5',
+        total_marks_scored: '1200',
+        max_marks_possible: '1500'
     },
     ...Array.from({ length: 47 }, (_, i) => ({
         rank: i + 4,
         name: `Student ${i + 4}`,
         roll_num: `2021XXX${String(i + 4).padStart(3, '0')}`,
-        cgpa: 9.0 - (i * 0.1),
-        total_marks_scored: 1200 - (i * 50),
-        max_marks_possible: 1500
+        cgpa: `${9.0 - (i * 0.1)}`,
+        total_marks_scored: `${1200 - (i * 50)}`,
+        max_marks_possible: '1500'
     }))
 ];
 

@@ -1,11 +1,11 @@
 interface Student {
     name: string;
-    rank: number;
+    rank?: number;
     roll_num: string;
-    cgpa: number;
-    max_marks_possible: number;
-    total_marks_scored: number;
-    [key: string]: number | string;
+    cgpa: string;
+    max_marks_possible: string;
+    total_marks_scored: string;
+    [key: string]: number | string | undefined;
 }
 
 interface Subject {

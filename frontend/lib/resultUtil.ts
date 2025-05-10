@@ -42,12 +42,13 @@ export const getGradeDescription = (grade: string) => {
     }
 };
 
-export const getCGPADescription = (cgpa: number) => {
-    return cgpa >= 9.5 ? 'Outstanding'
-        : cgpa >= 8.5 ? 'Excellent'
-            : cgpa >= 7.5 ? 'Very Good'
-                : cgpa >= 6.5 ? 'Good'
-                    : cgpa >= 5.5 ? 'Above Average'
-                        : cgpa >= 4.5 ? 'Average'
+export const getCGPADescription = (cgpa: string) => {
+    const numCGPA = parseFloat(cgpa);
+    return numCGPA >= 9.5 ? 'Outstanding'
+        : numCGPA >= 8.5 ? 'Excellent'
+            : numCGPA >= 7.5 ? 'Very Good'
+                : numCGPA >= 6.5 ? 'Good'
+                    : numCGPA >= 5.5 ? 'Above Average'
+                        : numCGPA >= 4.5 ? 'Average'
                             : 'Fail';
 }
