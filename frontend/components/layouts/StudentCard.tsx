@@ -89,7 +89,7 @@ const SubjectDetails = memo(({
                 <div className="flex items-center space-x-6">
                     <div className="text-center">
                         <p className="text-sm text-blue-300">Total</p>
-                        <p className="font-bold text-white">{subject.total_marks}/{subject.max_internal_marks + subject.max_external_marks}</p>
+                        <p className="font-bold text-white">{subject.total_marks}</p>
                     </div>
                     <div className="text-center">
                         <p className="text-sm text-blue-300">Grade</p>
@@ -119,11 +119,11 @@ const SubjectDetails = memo(({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <p className="text-xs text-blue-300 mb-1">Internal Marks</p>
-                            <p>{subject.internal_marks}/{subject.max_internal_marks}</p>
+                            <p>{subject.internal_marks}</p>
                         </div>
                         <div>
                             <p className="text-xs text-blue-300 mb-1">External Marks</p>
-                            <p>{subject.external_marks}/{subject.max_external_marks}</p>
+                            <p>{subject.external_marks}</p>
                         </div>
                     </div>
 
