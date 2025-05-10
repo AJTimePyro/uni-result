@@ -130,7 +130,7 @@ export class Result {
         this.subjects = await Subject.find(
             { _id: { $in: objectIds } },
             { university_id: 0 }
-        ).select('-_id ');
+        ).select('-_id -batch_years');
     }
 
     private assignRanks(resultData: StudentRecord[]) {
