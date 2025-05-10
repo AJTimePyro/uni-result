@@ -312,13 +312,22 @@ class Result_DB(DB):
             shift = 'E'            
 
         # Check if college already exist (might have different shift doesn't matter)
-        isCollegeExist = any(
-            college.get("college_name") == college_name
-            for college in degree_doc.get("colleges", [])
-        )
+        isCollegeExist = False
+        isShiftExist = False
+        for college in degree_doc.get("colleges", []):
+            if college.get("college_name", '') == college_name:
+                isCollegeExist = True
+
+                shifts = college.get("shifts", {})
+                isShiftExist = shift in shifts
+                break
       
         # Already college with different shift exist, merge new one with existing one in array and link in degree
         if isCollegeExist:
+            if isShiftExist:
+                result_db_logger.info(f"College {college_id} - {college_name} found with same shift {SHIFT_COLLEGE_MAP[shift]}, skipping...")
+                return
+            
             result_db_logger.info(f"College {college_id} - {college_name} found with different shift, adding new shift {SHIFT_COLLEGE_MAP[shift]}...")
             await self.__degree_collec.update_one({
                 "_id": self.__degree_doc_id,
