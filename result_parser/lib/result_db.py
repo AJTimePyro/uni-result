@@ -314,17 +314,21 @@ class Result_DB(DB):
         # Check if college already exist (might have different shift doesn't matter)
         isCollegeExist = False
         isShiftExist = False
+        isSemExist = False
         for college in degree_doc.get("colleges", []):
             if college.get("college_name", '') == college_name:
                 isCollegeExist = True
 
                 shifts = college.get("shifts", {})
                 isShiftExist = shift in shifts
+
+                semesters = college.get("available_semester", [])
+                isSemExist = semester_num in semesters
                 break
       
         # Already college with different shift exist, merge new one with existing one in array and link in degree
         if isCollegeExist:
-            if isShiftExist:
+            if isShiftExist and isSemExist:
                 result_db_logger.info(f"College {college_id} - {college_name} found with same shift {SHIFT_COLLEGE_MAP[shift]}, skipping...")
                 return
             
