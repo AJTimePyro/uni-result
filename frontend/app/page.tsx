@@ -1,11 +1,7 @@
-import SpaceScene from '@/components/spaceProps/3DSpace';
-import OverlayContent from '@/components/ui/OverlayContent';
+import LandingPage from "@/components/clientSidePages/Landing";
 
 export default function Home() {
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
-      <SpaceScene />
-      <OverlayContent />
-    </div>
+    <LandingPage />
   );
 }

@@ -153,77 +153,6 @@ const formatScore = (scoreStr: string) => {
     }
 };
 
-// Cosmos background component
-const CosmosBackground = () => {
-    return (
-        <div className="fixed inset-0 z-0 overflow-hidden">
-            <div className="absolute inset-0 bg-black bg-opacity-80">
-                {/* Stars */}
-                {[...Array(200)].map((_, i) => (
-                    <motion.div
-                        key={i}
-                        className="absolute rounded-full bg-white"
-                        style={{
-                            width: Math.random() * 2 + 1 + "px",
-                            height: Math.random() * 2 + 1 + "px",
-                            top: Math.random() * 100 + "%",
-                            left: Math.random() * 100 + "%",
-                            opacity: Math.random() * 0.8 + 0.2,
-                        }}
-                        animate={{
-                            opacity: [0.2, 0.8, 0.2],
-                        }}
-                        transition={{
-                            duration: Math.random() * 5 + 2,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                        }}
-                    />
-                ))}
-
-                {/* Nebula effects */}
-                <motion.div
-                    className="absolute rounded-full bg-purple-500 bg-opacity-10 blur-3xl"
-                    style={{
-                        width: "40%",
-                        height: "40%",
-                        top: "10%",
-                        left: "20%",
-                    }}
-                    animate={{
-                        opacity: [0.1, 0.15, 0.1],
-                        scale: [1, 1.05, 1],
-                    }}
-                    transition={{
-                        duration: 15,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                    }}
-                />
-
-                <motion.div
-                    className="absolute rounded-full bg-blue-500 bg-opacity-10 blur-3xl"
-                    style={{
-                        width: "35%",
-                        height: "35%",
-                        top: "50%",
-                        left: "60%",
-                    }}
-                    animate={{
-                        opacity: [0.1, 0.2, 0.1],
-                        scale: [1, 1.03, 1],
-                    }}
-                    transition={{
-                        duration: 20,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                    }}
-                />
-            </div>
-        </div>
-    );
-};
-
 // Student profile component
 const StudentProfile = ({ studentData }: { studentData: Student }) => {
     return (
@@ -587,12 +516,10 @@ export default function StudentResultsPage() {
     const hasError = mockData.results[activeSemester]?.error;
 
     return (
-        <div className="min-h-screen text-white relative bg-black overflow-hidden">
-            {/* Cosmos Background */}
-            <CosmosBackground />
+        <div className="min-h-screen text-white overflow-hidden">
 
             {/* Main Content */}
-            <div className="container mx-auto px-4 py-8 relative z-10">
+            <div className="container mx-auto px-4 py-8 z-10">
                 <motion.div
                     className="text-center mb-8"
                     initial={{ opacity: 0, y: -20 }}
