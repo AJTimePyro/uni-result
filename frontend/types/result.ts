@@ -38,3 +38,25 @@ interface StudentRes {
     subjects: Subject[],
     results: Record<string, StudentSemResErr>
 }
+
+interface SemesterResult {
+    roll_num: string;
+    name: string;
+    college_id: string;
+    total_marks_scored: string;
+    max_marks_possible: string;
+    cgpa: string;
+    [key: string]: string;
+}
+
+interface Results {
+    [key: string]: {
+        results?: SemesterResult;
+        error?: string;
+    };
+}
+
+interface StudentData {
+    subjects: Subject[];
+    results: Results;
+}

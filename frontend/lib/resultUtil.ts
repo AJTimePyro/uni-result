@@ -1,16 +1,14 @@
 export const parseMarkData = (markString: string) => {
     try {
-        // Remove brackets and split by comma
-        const parts = markString.replace(/[\[\]']/g, '').split(', ');
+        const scoreArray = JSON.parse(markString.replace(/'/g, '"'));
         return {
-            internal: parseInt(parts[0]),
-            external: parseInt(parts[1]),
-            grade: parts[2].replace(/'/g, ''),
-            credit: parseInt(parts[3])
+            marks: scoreArray[0] + scoreArray[1],
+            grade: scoreArray[2],
+            credit: scoreArray[3]
         };
     } catch (e) {
         console.error(e);
-        return { internal: 0, external: 0, grade: 'N/A', credit: 0 };
+        return null;
     }
 };
 
