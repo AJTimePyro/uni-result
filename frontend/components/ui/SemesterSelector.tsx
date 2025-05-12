@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 interface SemesterSelectorProps {
     activeSemester: number;
     setActiveSemester: (sem: number) => void;
-    studentResult: StudentData;
+    studentResult: Results;
 }
 
 export default function SemesterSelector ({ activeSemester, setActiveSemester, studentResult }: SemesterSelectorProps) {
-    const availableSemesters = Object.keys(studentResult.results)
-        .filter(semKey => !studentResult.results[semKey].error)
+    const availableSemesters = Object.keys(studentResult)
+        .filter(semKey => !studentResult[semKey].error)
         .map(semKey => parseInt(semKey));
 
     return (

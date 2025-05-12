@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const student_id = searchParams.get('student_id');
+  const student_id = searchParams.get('roll-num');
   if (!student_id) {
     return NextResponse.json({
       "Error": "student_id should not provided"

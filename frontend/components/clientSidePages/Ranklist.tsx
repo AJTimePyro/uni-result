@@ -9,6 +9,7 @@ import RanklistTable from "../ui/RanklistTable";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS, fetchRanklistResult } from "@/queries";
 import StudentCard from "../layouts/StudentCard";
+import SearchBar from "../ui/SearchBar";
 
 const mockRanklistData: StudentWithRank[] = [
     {
@@ -93,18 +94,7 @@ export default function RankListClientSide() {
     return (
         <div className="mx-auto relative z-10 space-y-5">
             <div className="relative space-y-5 max-md:p-6">
-                <div className="relative col-span-full">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="text-indigo-300" size={20} />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Explore students by name or cosmic identifier"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-lg bg-indigo-900/50 border border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                </div>
+                <SearchBar value={searchQuery} setValue={setSearchQuery} placeholder="Explore students by name or cosmic identifier" />
                 <RankListFilters isButtonLoading={isFetching} callBackFetchResult={callBackFetchResult} />
             </div>
 
