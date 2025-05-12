@@ -2,13 +2,21 @@ export const parseMarkData = (markString: string) => {
     try {
         const scoreArray = JSON.parse(markString.replace(/'/g, '"'));
         return {
-            marks: scoreArray[0] + scoreArray[1],
+            internal_marks: scoreArray[0],
+            external_marks: scoreArray[1],
+            total_marks: scoreArray[0] + scoreArray[1],
             grade: scoreArray[2],
-            credit: scoreArray[3]
+            credit: scoreArray[3],
         };
     } catch (e) {
         console.error(e);
-        return null;
+        return {
+            internal_marks: 0,
+            external_marks: 0,
+            total_marks: 0,
+            grade: 'F',
+            credit: 0
+        };
     }
 };
 

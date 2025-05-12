@@ -13,7 +13,7 @@ export default function SubjectCard({ subjectId, subjectScore, subjectInfo }: { 
         max_marks: 100
     };
 
-    const percentage = (score.marks / subject.max_marks) * 100;
+    const percentage = (score.total_marks / subject.max_marks) * 100;
 
     const getBgColor = () => {
         switch (score.grade) {
@@ -64,7 +64,7 @@ export default function SubjectCard({ subjectId, subjectScore, subjectInfo }: { 
             <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                     <p className="text-xs text-gray-400">Marks</p>
-                    <p className={`font-medium ${getTextColor()}`}>{score.marks}/{subject.max_marks}</p>
+                    <p className={`font-medium ${getTextColor()}`}>{score.total_marks}/{subject.max_marks}</p>
                 </div>
                 <div>
                     <p className="text-xs text-gray-400">Percentage</p>

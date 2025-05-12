@@ -243,11 +243,11 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
 
                 return {
                     ...subject,
-                    internal_marks: markData.internal,
-                    external_marks: markData.external,
+                    internal_marks: markData.internal_marks,
+                    external_marks: markData.external_marks,
+                    total_marks: markData.total_marks,
                     grade: markData.grade,
-                    subject_credit: markData.credit,
-                    total_marks: markData.internal + markData.external
+                    subject_credit: markData.credit
                 };
             });
     }, [studentData, subjectsList]);
