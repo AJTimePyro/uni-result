@@ -71,8 +71,8 @@ export default function SubjectCard({ subjectId, subjectScore, subjectInfo }: { 
                     <p className={`font-medium ${getTextColor()}`}>{percentage.toFixed(2)}%</p>
                 </div>
                 <div>
-                    <p className="text-xs text-gray-400">Subject Credit</p>
-                    <p className={`font-medium ${getTextColor()}`}>{score.credit}/10</p>
+                    <p className="text-xs text-gray-400">Credit</p>
+                    <p className={`font-medium ${getTextColor()}`}>{score.credit}</p>
                 </div>
             </div>
 
