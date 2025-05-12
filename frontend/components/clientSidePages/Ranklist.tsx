@@ -1,6 +1,5 @@
 'use client'
 
-import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import RankListFilters from "../layouts/RankListFilters";
 import { motion } from "framer-motion";

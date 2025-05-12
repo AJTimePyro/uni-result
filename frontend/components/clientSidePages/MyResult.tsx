@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import StudentProfile from '@/components/ui/StudentProfileCard';
 import SemesterSelector from '@/components/ui/SemesterSelector';
