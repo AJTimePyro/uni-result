@@ -506,7 +506,7 @@ class IPU_Result_Parser:
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        regexGrade = r'(\d+|CAN|ABS)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
+        regexGrade = r'(\d+|CAN|ABS|RL)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
         subject_start_index = 2
         student_grade_list = []
         while subject_start_index < len(student_n_subject_detail):
@@ -552,14 +552,14 @@ class IPU_Result_Parser:
                         total_marks = self.__get_int_val(total_marks_str)
                     else:
                         total_marks_str = total_marks_str.strip().upper()
-                        if total_marks_str in ['ABS', 'CAN']:
+                        if total_marks_str in ['ABS', 'CAN', 'RL']:
                             total_marks = 0
                             status = total_marks_str
                         else:
                             parser_logger.warning(f"Total marks is not parsable in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
                             raise ValueError(f"Total marks is not parsable in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
 
-            elif 'ABS' not in student_total_marks_n_grade[subject_start_index]: # Raising error other than being absent
+            else:
                 parser_logger.error(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
                 raise ValueError(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
             
