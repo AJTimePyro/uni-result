@@ -554,7 +554,8 @@ class IPU_Result_Parser:
                 if not grade:
                     parser_logger.warning(f"Grade not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
                     grade = self.__marks_to_grade(internal_marks + external_marks, subject_id)
-            else:
+
+            elif 'ABS' not in student_total_marks_n_grade[subject_start_index]: # Raising error other than being absent
                 parser_logger.error(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
                 raise ValueError(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
 
