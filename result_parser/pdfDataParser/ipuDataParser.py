@@ -506,7 +506,7 @@ class IPU_Result_Parser:
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        regexGrade = r'\d+\s*\(([ABCFPO]\+?)\)'
+        regexGrade = r'(\d+)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
         subject_start_index = 2
         student_grade_list = []
         while subject_start_index < len(student_n_subject_detail):
@@ -537,13 +537,28 @@ class IPU_Result_Parser:
             external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
             
             grade = 'F' # If no match found means, it's fail
-            grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
-            if grade_match:
-                grade = grade_match.group(1).strip()
-            else:
-                grade = self.__marks_to_grade(internal_marks + external_marks, subject_id)
+            total_marks = internal_marks + external_marks   # Default total marks
 
-            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit]
+            total_marks_n_grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
+            if total_marks_n_grade_match:
+                total_marks_str = total_marks_n_grade_match.group(1)
+                grade = total_marks_n_grade_match.group(2).strip()
+
+                if not total_marks_str:
+                    parser_logger.warning(f"Total marks not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                else:
+                    if total_marks_str.isdigit():
+                        total_marks = self.__get_int_val(total_marks_str)
+                    else:
+                        parser_logger.warning(f"Total marks is not number in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
+                if not grade:
+                    parser_logger.warning(f"Grade not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                    grade = self.__marks_to_grade(internal_marks + external_marks, subject_id)
+            else:
+                parser_logger.error(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                raise ValueError(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+
+            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit, total_marks]
             student_grade_list.append(grade)
             subject_start_index += 2
 
