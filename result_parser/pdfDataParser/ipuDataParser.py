@@ -203,7 +203,7 @@ class IPU_Result_Parser:
 
         if isinstance(val, int):
             return val
-        if val.isdigit():
+        if is_int(val):
             return int(val.strip())
         else:
             return 0
@@ -560,6 +560,9 @@ class IPU_Result_Parser:
                 else:
                     if is_int(total_marks_str): # Checks total marks is integer or not
                         total_marks = self.__get_int_val(total_marks_str)
+
+                        if total_marks < 0:
+                            parser_logger.warning(f"Total marks is negative in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
                     else:
                         total_marks_str = total_marks_str.strip().upper()
                         if total_marks_str in STATUS_MAP.keys():
