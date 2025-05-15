@@ -1,7 +1,7 @@
 from pdfplumber.page import Page
 from result_parser.lib.result_db import Result_DB
 from result_parser.lib.logger import parser_logger
-from result_parser.lib.utils import normalize_spacing, standardize_subject_code
+from result_parser.lib.utils import is_int, normalize_spacing, standardize_subject_code
 from result_parser.lib.customErrors import OldSessionException
 from typing import Union
 import re
@@ -516,7 +516,7 @@ class IPU_Result_Parser:
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        regexGrade = r'(\d+|CAN|ABS|RL|DET|C|A|D)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
+        regexGrade = r'(-?\d+|CAN|ABS|RL|DET|C|A|D)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
         subject_start_index = 2
         student_grade_list = []
         while subject_start_index < len(student_n_subject_detail):
@@ -558,7 +558,7 @@ class IPU_Result_Parser:
                 if not total_marks_str:
                     parser_logger.warning(f"Total marks not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
                 else:
-                    if total_marks_str.isdigit():
+                    if is_int(total_marks_str): # Checks total marks is integer or not
                         total_marks = self.__get_int_val(total_marks_str)
                     else:
                         total_marks_str = total_marks_str.strip().upper()

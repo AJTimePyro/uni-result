@@ -52,3 +52,14 @@ def standardize_subject_code(code):
         cleaned_prefix = re.sub(r'[^A-Za-z0-9\(\)]', '', raw_prefix).upper()
         return f"{cleaned_prefix}-{number}"
     return code
+
+def is_int(value):
+    """
+    It will check if the value is integer
+    """
+    
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
