@@ -324,6 +324,9 @@ class IPU_Result_Parser:
         if subject_max_marks != subject_internal_marks + subject_external_marks:
             parser_logger.error(f"Subject total marks is not equal to sum of subject internal marks and subject external marks in page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
             raise ValueError("Subject total marks is not equal to sum of subject internal marks and subject external marks")
+        
+        if subject_max_marks == 0:
+            subject_max_marks = subject_internal_marks + subject_external_marks
 
         return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_max_marks)
     
