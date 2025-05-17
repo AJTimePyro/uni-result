@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Result } from "@/lib/fetchResult";
 
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   if (!searchParams) {

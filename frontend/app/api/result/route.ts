@@ -1,6 +1,8 @@
 import { Result } from "@/lib/fetchResult";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const college_id = searchParams.get("college_id") || "";
