@@ -233,12 +233,7 @@ class Result_DB(DB):
         # If degree already exist
         if degree_id in batch_doc["degrees"]:
             degree_doc_id = batch_doc["degrees"][degree_id]
-            existing_degree = await self.__degree_collec.find_one({
-                "_id": degree_doc_id
-            }, {
-                "folder_id": 1,
-                "sem_results": 1
-            })
+            existing_degree = await self.__get_degree_by_doc_id(degree_doc_id, { "sem_results": 1, "folder_id": 1 })
             self.__gdrive_file_id = existing_degree["sem_results"].get(str(sem_num))
 
             if existing_degree:
@@ -291,6 +286,15 @@ class Result_DB(DB):
             degree_folder_name
         )
         return degree_doc_id
+
+    async def __get_degree_by_doc_id(self, degree_doc_id: str, projection = {}):
+        """
+        It will get degree by degree doc id
+        """
+
+        return await self.__degree_collec.find_one({
+            "_id": degree_doc_id
+        }, projection)
 
     async def __adding_updating_new_college_degree(
         self,
@@ -483,6 +487,8 @@ class Result_DB(DB):
 
             sub_max_marks = self.sub_id_max_marks_map.get(sub_id, None)
             if sub_max_marks is None:
+                # print("Subject ID: ", sub_id)
+                # sub_max_marks = 100
                 result_db_logger.error(f"Subject {sub_id} not found in max marks map")
                 raise ValueError(f"Subject {sub_id} not found in max marks map")
 
@@ -603,8 +609,9 @@ class Result_DB(DB):
         subject_code = standardize_subject_code(subject_code)
 
         if len(subject_id) < 6:
-            result_db_logger.error(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
-            raise ValueError(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
+            result_db_logger.warning(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
+            return None
+            # raise ValueError(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
 
         existing_sub = await self._subject_collec.find_one({
             "subject_id": subject_id,
@@ -696,16 +703,33 @@ class Result_DB(DB):
         if subject_code in self.subject_id_code_map:
             return self.subject_id_code_map[subject_code]
         else:
-            sub = await self.__subject_collec.find({
+            subs = await self.__subject_collec.find({
                 "subject_code": subject_code,
                 "batch_years": batch_year
             }).to_list(length=None)
-            if len(sub) == 1:
-                sub = sub[0]
+            if len(subs) == 1:
+                sub = subs[0]
                 self.subject_id_code_map[subject_code] = sub["subject_id"]
+                self.sub_id_max_marks_map[sub["subject_id"]] = sub["max_marks"]
+
                 return sub["subject_id"]
-            elif len(sub) == 0:
+            elif len(subs) == 0:
                 return None
+        
             else:
-                result_db_logger.error(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
-                raise ValueError(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
+                # Matching subjects with degree's subjects to find common subject
+                degree = await self.__get_degree_by_doc_id(self.__degree_doc_id, { "subjects": 1 })
+                degree_subjects = degree["subjects"] if degree else {}
+
+                # A lookup map from subject _id(doc id) to subject_id
+                sub_doc_id_to_subject_id = {str(sub["_id"]): (sub["subject_id"], sub["max_marks"]) for sub in subs}                
+
+                for subject_doc_id in degree_subjects.values():
+                    if subject_doc_id in sub_doc_id_to_subject_id:
+                        subject_id = sub_doc_id_to_subject_id[subject_doc_id][0]
+                        self.subject_id_code_map[subject_code] = subject_id
+                        self.sub_id_max_marks_map[subject_id] = sub_doc_id_to_subject_id[subject_doc_id][1]
+                        return subject_id
+                else:
+                    result_db_logger.error(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
+                    raise ValueError(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
