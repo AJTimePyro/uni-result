@@ -62,6 +62,9 @@ class IPU_Result_Parser:
     __res_db: Result_DB
     __save_link_metadata_param: dict
     __current_batch_year: int
+    __current_degree_id: str
+    __current_college_id: str
+    __current_semester_num: int
 
     def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
@@ -77,6 +80,9 @@ class IPU_Result_Parser:
         self.__res_db = None
         self.__save_link_metadata_param = dict()
         self.__current_batch_year = 0
+        self.__current_degree_id = ''
+        self.__current_college_id = ''
+        self.__current_semester_num = 0
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -418,13 +424,18 @@ class IPU_Result_Parser:
         This will remove header from page data and then starts parsing
         """
         
-        batch_year = self.__get_batch(raw_result)
+        batch_year = self.__extract_student_page_exam_metadata(raw_result)
         if batch_year == 0:
             parser_logger.error(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
             raise ValueError(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
         elif batch_year < self.__starting_session:
             parser_logger.info(f"Batch year {batch_year} is less than starting session year {self.__starting_session}, skipping page no. {self.__pdf_page_index + 1}...")
             return
+        
+        if self.__current_degree_id != self.__save_link_metadata_param['degree_id'] or self.__current_college_id != self.__save_link_metadata_param['college_id'] or self.__current_semester_num != self.__save_link_metadata_param['semester_num']:
+            self.__save_link_metadata_param.pop("subject_ids")
+            parser_logger.error(f"Degree id or college id or semester number changed from subject page, previous: {self.__save_link_metadata_param}, new: degree id: {self.__current_degree_id}, college id: {self.__current_college_id}, semester num: {self.__current_semester_num}")
+            raise ValueError(f"Degree id or college id or semester number changed from subject page, previous: {self.__save_link_metadata_param}, new: degree id: {self.__current_degree_id}, college id: {self.__current_college_id}, semester num: {self.__current_semester_num}")
         
         if self.__current_batch_year != batch_year:
             if self.__current_batch_year != 0:
@@ -587,6 +598,35 @@ class IPU_Result_Parser:
             self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit, total_marks, status]
             student_grade_list.append(grade)
             subject_start_index += 2
+    
+    def __extract_student_page_exam_metadata(self, raw_data: str):
+        """
+        It will extract exam metadata in student result page to verify if it is correct
+        """
+
+        regexStrForExamMetaData = r'Programme Code:\s*(\d{3})\s+Programme Name:\s*.+\s+Sem./Year(?:/EU)?:\s*(.+)\s+(?:SEMESTER|ANNUAL)\s+Batch:\s*(\d{4}).+Institution Code:\s*(\d{3})'
+        metaDataSearched = re.search(regexStrForExamMetaData, raw_data, re.DOTALL)
+
+        if metaDataSearched is None:
+            parser_logger.error(f"Failed to parse Exam Meta Data in student result from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+            raise ValueError(f"Failed to parse Exam Meta Data in student result from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+
+        degree_id = metaDataSearched.group(1).strip()
+        semester_str = metaDataSearched.group(2).strip()
+        batch_year = self.__get_int_val(metaDataSearched.group(3))
+        college_id = metaDataSearched.group(4).strip()
+
+        semester_num = 0
+        if semester_str.isdigit():
+            semester_num = self.__get_int_val(semester_str)
+        else:
+            semester_num = SEMESTER_STR_TO_NUM.get(semester_str.lower(), 0)
+
+        self.__current_degree_id = degree_id
+        self.__current_semester_num = semester_num
+        self.__current_college_id = college_id
+
+        return batch_year
 
     def __marks_to_grade(self, marks: int, sub_id: str):
         """
