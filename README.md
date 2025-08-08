@@ -41,7 +41,7 @@ The frontend is a modern web application built with Next.js and React, providing
 
 ## Note
 
-Due to various reasons, I have decided to discontinue the development of this project. The code is left as-is and the project is incomplete. It stands as a proof-of-concept for a scalable result-ranking system.
+This project is functionally complete but may contain some unresolved issues or bugs. Further development has been discontinued. It serves as a robust example of a scalable, cost-effective result-ranking system.
 
 ## Credits
 
