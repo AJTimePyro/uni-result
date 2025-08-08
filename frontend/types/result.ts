@@ -1,19 +1,62 @@
 interface Student {
     name: string;
-    rank: number;
     roll_num: string;
-    cgpa: number;
-    max_marks_possible: number;
-    total_marks_scored: number;
-    [key: string]: number | string;
+    cgpa: string;
+    max_marks_possible: string;
+    total_marks_scored: string;
+    [key: string]: number | string | undefined;
+}
+
+interface StudentWithRank extends Student {
+    rank: number;
 }
 
 interface Subject {
     subject_id: string;
-    max_external_marks: number;
-    max_internal_marks: number;
-    passing_marks: number;
+    max_marks: number;
     subject_code: string;
-    subject_credit: number;
     subject_name: string;
+}
+
+type StudentRecord = {
+    roll_num: string;
+    name: string;
+    college_id: string;
+    total_marks_scored: string;
+    max_marks_possible: string;
+    rank?: number;
+    cgpa: string | number;
+    [key: string]: string | number | undefined;
+};
+
+type StudentSemResErr = {
+    error?: string,
+    results?: StudentRecord
+}
+
+interface StudentRes {
+    subjects: Subject[],
+    results: Record<string, StudentSemResErr>
+}
+
+interface SemesterResult {
+    roll_num: string;
+    name: string;
+    college_id: string;
+    total_marks_scored: string;
+    max_marks_possible: string;
+    cgpa: string;
+    [key: string]: string;
+}
+
+interface Results {
+    [key: string]: {
+        results?: SemesterResult;
+        error?: string;
+    };
+}
+
+interface StudentData {
+    subjects: Subject[];
+    results: Results;
 }

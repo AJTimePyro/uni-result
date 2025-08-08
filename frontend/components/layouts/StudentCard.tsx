@@ -8,20 +8,21 @@ import {
 } from '@/components/ui/dialog';
 import { getCGPADescription, getGradeDescription, getGradePoint, parseMarkData } from '@/lib/resultUtil';
 
-interface Student {
-    name: string;
-    roll_num: string;
-    total_marks_scored: number;
-    max_marks_possible: number;
-    cgpa: number;
-    [key: string]: any;
-}
+// interface Student {
+//     name: string;
+//     roll_num: string;
+//     total_marks_scored: number;
+//     max_marks_possible: number;
+//     cgpa: number;
+//     [key: string]: any;
+// }
 
 interface SubjectWithMarks extends Subject {
     internal_marks: number;
     external_marks: number;
     grade: string;
     total_marks: number;
+    subject_credit: number;
 }
 
 interface StudentCardProps {
@@ -44,15 +45,15 @@ const StudentInfoHeader = memo(({ name, rollNum }: { name: string, rollNum: stri
     </div>
 ));
 
-const ScoreSummary = memo(({ totalScore, maxScore, cgpa }: { totalScore: number, maxScore: number, cgpa: number }) => (
+const ScoreSummary = memo(({ totalScore, maxScore, cgpa }: { totalScore: string, maxScore: string, cgpa: string }) => (
     <div className="mt-5 p-4 bg-gray-900 bg-opacity-40 backdrop-blur-sm rounded-lg grid grid-cols-3 gap-4">
         <div>
             <p className="text-sm text-blue-300">Percentage</p>
-            <p className="text-xl font-bold text-white">{((totalScore/maxScore) * 100).toFixed(2)} %</p>
+            <p className="text-xl font-bold text-white">{isNaN(parseFloat(totalScore)) || isNaN(parseFloat(maxScore)) ? 0 : (parseFloat(totalScore)/parseFloat(maxScore) * 100).toFixed(2)} %</p>
         </div>
         <div>
             <p className="text-sm text-blue-300">CGPA</p>
-            <p className="text-xl font-bold text-white">{cgpa.toFixed(2)}</p>
+            <p className="text-xl font-bold text-white">{cgpa || 0}</p>
         </div>
         <div>
             <p className="text-sm text-blue-300">Total Marks</p>
@@ -89,7 +90,7 @@ const SubjectDetails = memo(({
                 <div className="flex items-center space-x-6">
                     <div className="text-center">
                         <p className="text-sm text-blue-300">Total</p>
-                        <p className="font-bold text-white">{subject.total_marks}/{subject.max_internal_marks + subject.max_external_marks}</p>
+                        <p className="font-bold text-white">{subject.total_marks}</p>
                     </div>
                     <div className="text-center">
                         <p className="text-sm text-blue-300">Grade</p>
@@ -119,11 +120,11 @@ const SubjectDetails = memo(({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <p className="text-xs text-blue-300 mb-1">Internal Marks</p>
-                            <p>{subject.internal_marks}/{subject.max_internal_marks}</p>
+                            <p>{subject.internal_marks}</p>
                         </div>
                         <div>
                             <p className="text-xs text-blue-300 mb-1">External Marks</p>
-                            <p>{subject.external_marks}/{subject.max_external_marks}</p>
+                            <p>{subject.external_marks}</p>
                         </div>
                     </div>
 
@@ -193,7 +194,7 @@ const CardHeader = memo(({
             <div className="flex items-center bg-gradient-to-r from-blue-700 to-indigo-700 px-4 py-2 rounded-full">
                 <Award size={16} className="mr-2 text-yellow-300" />
                 <span className="text-white font-medium">
-                    {getCGPADescription(studentData.cgpa as number)}
+                    {getCGPADescription(studentData.cgpa)}
                 </span>
             </div>
         </div>
@@ -238,14 +239,15 @@ export default function StudentCard({ studentData, subjectsList, open, setIsModa
             .filter(subject => studentData[`sub_${subject.subject_id}`])
             .map(subject => {
                 const subKey = `sub_${subject.subject_id}`;
-                const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F']");
+                const markData = parseMarkData(studentData[subKey] as string || "[0, 0, 'F', 0]");
 
                 return {
                     ...subject,
-                    internal_marks: markData.internal,
-                    external_marks: markData.external,
+                    internal_marks: markData.internal_marks,
+                    external_marks: markData.external_marks,
+                    total_marks: markData.total_marks,
                     grade: markData.grade,
-                    total_marks: markData.internal + markData.external
+                    subject_credit: markData.credit
                 };
             });
     }, [studentData, subjectsList]);

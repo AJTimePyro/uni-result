@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Star, Search } from 'lucide-react';
 
-export default function OverlayContent() {
+export default function LandingPage() {
     return (
-        <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4 z-10 bg-black/10">
+        <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4 bg-black/10">
             <motion.h1
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}

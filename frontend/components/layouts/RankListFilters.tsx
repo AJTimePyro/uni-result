@@ -470,7 +470,6 @@ export default function RankListFilters({ isButtonLoading, callBackFetchResult }
         const requestJson: RankListRequestJSON = {
             college_id: selectedCollegeShift.collegeID,
             degree_doc_id: selectedBranch.id,
-            semester_num: selectedSemester,
             result_file_id: semResultIDs[selectedSemester.toString()]
         }
         callBackFetchResult(requestJson)

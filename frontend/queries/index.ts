@@ -4,7 +4,8 @@ export const QUERY_KEYS = {
     sessionYears: (uniID: string) => ["university-id", uniID],
     degrees: (batchID: string) => ["batch-id", batchID],
     colleges: (degreeID: string) => ["degree-id", degreeID],
-    rankList: (rankListJson: RankListRequestJSON) => ["ranklist", rankListJson]
+    rankList: (rankListJson: RankListRequestJSON) => ["ranklist", rankListJson],
+    student: (rollNum: string) => ["student", rollNum]
 }
 
 // All data fetch functions
@@ -30,14 +31,21 @@ export const fetchColleges = async (degreeID: string) : Promise<[College[], Reco
 
 export const fetchRanklistResult = async ({
     college_id,
-    semester_num,
     degree_doc_id,
     result_file_id
 }: RankListRequestJSON) => {
-    if (!semester_num || !degree_doc_id || !result_file_id) {   // Empty college id is allowed as it means all
+    if (!degree_doc_id || !result_file_id) {   // Empty college id is allowed as it means all
         return {};
     }
 
-    const res = await axios.get(`/api/result?college_id=${college_id}&semester_num=${semester_num}&degree_doc_id=${degree_doc_id}&result_file_id=${result_file_id}`)
+    const res = await axios.get(`/api/result?college_id=${college_id}&degree_doc_id=${degree_doc_id}&result_file_id=${result_file_id}`)
+    return res.data
+}
+
+export const fetchStudentResult = async (rollNum: string) => {
+    if (!rollNum) {
+        return {};
+    }
+    const res = await axios.get(`/api/student-result?roll-num=${rollNum}`)
     return res.data
 }

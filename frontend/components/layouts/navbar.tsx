@@ -84,7 +84,7 @@ export default function CosmicNavbar() {
             <Sparkles size={18} className="text-yellow-300 inline-block mr-1" />
             Rank List
           </Link>
-          <Link href="/results" className="hover:text-purple-300 transition">
+          <Link href="/my-result" className="hover:text-purple-300 transition">
             <Sparkles size={18} className="text-green-300 inline-block mr-1" />
             My Results
           </Link>
@@ -118,7 +118,7 @@ export default function CosmicNavbar() {
           <Sparkles size={18} className="text-yellow-300" />
           Rank List
         </Link>
-        <Link href="/results" onClick={handleLinkClick} className="flex items-center gap-2 text-white hover:text-purple-300 transition">
+        <Link href="/my-result" onClick={handleLinkClick} className="flex items-center gap-2 text-white hover:text-purple-300 transition">
           <Sparkles size={18} className="text-green-300" />
           My Results
         </Link>

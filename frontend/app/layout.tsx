@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layouts/navbar";
 import QueryProvider from "@/context/QueryProvider";
+import Background from "@/components/layouts/Background";
 
 export const metadata: Metadata = {
   title: "Doom Portal",
@@ -18,7 +19,9 @@ export default function RootLayout({
       <body>
         <Navbar />
         <QueryProvider>
-          {children}
+          <Background>
+            {children}
+          </Background>
         </QueryProvider>
       </body>
     </html>

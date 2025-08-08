@@ -61,45 +61,41 @@ class Result_DB(DB):
     __uni_collec: pymongo.collection.Collection
     __batch_collec: pymongo.collection.Collection
     __degree_collec: pymongo.collection.Collection
-    # __college_collec: pymongo.collection.Collection
     __subject_collec: pymongo.collection.Collection
-    __hall_of_fame_collec: pymongo.collection.Collection
     __uni_document: dict
     __gdrive: GDrive
     __final_folder_path_tracker: str
     __gdrive_upload_folder_id: str
     __semester_num: int
     __college_id: str
-    __subject_credits_dict: dict[str, int]
     subject_id_code_map: dict[str, str]
     __degree_doc_id: str
     __gdrive_file_id: str | None
+    sub_id_max_marks_map: dict[str, int]
 
-    def __init__(self, university_name: str = ''):
+    def __init__(self):
         super().__init__()
 
         self.__uni_collec = self._uni_collec
         self.__batch_collec = self._batch_collec
         self.__degree_collec = self._degree_collec
-        # self.__college_collec = self._college_collec
         self.__subject_collec = self._subject_collec
-        self.__hall_of_fame_collec = self._hall_of_fame_collec
 
         self.__gdrive = GDrive()
         self.__final_folder_path_tracker = ''
-        self.__subject_credits_dict = {}
         self.subject_id_code_map = {}
         self.__degree_doc_id = ''
         self.__semester_num = 0
         self.__gdrive_file_id = None
+        self.sub_id_max_marks_map = {}
     
     @classmethod
-    async def create(cls, university_name: str = ''):
+    async def create(cls, university_name: str = '', **kwargs):
         """
         Creating instance of Result_DB asyncronously
         """
 
-        self = cls()
+        self = cls(**kwargs)
 
         if university_name:
             await self.connect_to_university(university_name)
@@ -237,12 +233,7 @@ class Result_DB(DB):
         # If degree already exist
         if degree_id in batch_doc["degrees"]:
             degree_doc_id = batch_doc["degrees"][degree_id]
-            existing_degree = await self.__degree_collec.find_one({
-                "_id": degree_doc_id
-            }, {
-                "folder_id": 1,
-                "sem_results": 1
-            })
+            existing_degree = await self.__get_degree_by_doc_id(degree_doc_id, { "sem_results": 1, "folder_id": 1 })
             self.__gdrive_file_id = existing_degree["sem_results"].get(str(sem_num))
 
             if existing_degree:
@@ -296,6 +287,15 @@ class Result_DB(DB):
         )
         return degree_doc_id
 
+    async def __get_degree_by_doc_id(self, degree_doc_id: str, projection = {}):
+        """
+        It will get degree by degree doc id
+        """
+
+        return await self.__degree_collec.find_one({
+            "_id": degree_doc_id
+        }, projection)
+
     async def __adding_updating_new_college_degree(
         self,
         college_id: str,
@@ -307,27 +307,37 @@ class Result_DB(DB):
         It will add or update a new college for a given degree
         """
 
-        # college_folder_name = f'{college_id} - {college_name}'
-        shift = 'M'
-        updated_degree = None
-
         degree_doc = await self.__degree_collec.find_one({
             "_id": self.__degree_doc_id,
         }, session = self.__session)
 
+        shift = 'M'
         if is_evening_shift:
             shift = 'E'            
 
         # Check if college already exist (might have different shift doesn't matter)
-        isCollegeExist = any(
-            college.get("college_name") == college_name
-            for college in degree_doc.get("colleges", [])
-        )
+        isCollegeExist = False
+        isShiftExist = False
+        isSemExist = False
+        for college in degree_doc.get("colleges", []):
+            if college.get("college_name", '') == college_name:
+                isCollegeExist = True
+
+                shifts = college.get("shifts", {})
+                isShiftExist = shift in shifts
+
+                semesters = college.get("available_semester", [])
+                isSemExist = semester_num in semesters
+                break
       
         # Already college with different shift exist, merge new one with existing one in array and link in degree
         if isCollegeExist:
+            if isShiftExist and isSemExist:
+                result_db_logger.info(f"College {college_id} - {college_name} found with same shift {SHIFT_COLLEGE_MAP[shift]}, skipping...")
+                return
+            
             result_db_logger.info(f"College {college_id} - {college_name} found with different shift, adding new shift {SHIFT_COLLEGE_MAP[shift]}...")
-            updated_degree = await self.__degree_collec.update_one({
+            await self.__degree_collec.update_one({
                 "_id": self.__degree_doc_id,
                 "colleges": {
                     "$elemMatch": {
@@ -346,7 +356,7 @@ class Result_DB(DB):
         # No college with different shift exist, so just push new one in array and link in degree
         else:
             result_db_logger.info(f"Adding new College {college_id} - {college_name} with {SHIFT_COLLEGE_MAP[shift]} shift...")
-            updated_degree = await self.__degree_collec.update_one({
+            await self.__degree_collec.update_one({
                 "_id": self.__degree_doc_id
             }, {
                 "$push": {
@@ -363,7 +373,8 @@ class Result_DB(DB):
 
     async def __add_subjects_to_degree(
         self,
-        subject_ids: list[tuple[str, str]]
+        subject_ids: list[tuple[str, str]],
+        batch_year: int
     ):
         """
         It will add subjects to respected degree in a single batch update
@@ -381,10 +392,25 @@ class Result_DB(DB):
         for subject_id, subject_doc_id in subject_ids:
             if subject_id not in existing_degree["subjects"]:
                 new_subjects_to_add[f"subjects.{subject_id}"] = subject_doc_id
+            elif existing_degree["subjects"][subject_id] != subject_doc_id:
+                result_db_logger.warning(f"Subject {subject_id} already exist with different document id, existing id: {existing_degree['subjects'][subject_id]}, new id: {subject_doc_id}")
             
         if not new_subjects_to_add:
             result_db_logger.info(f"Subjects already added to degree")
             return
+        
+        # Linking subjects with batch year
+        await self.__subject_collec.update_many(
+            {
+                "_id": {
+                    "$in": list(new_subjects_to_add.values())
+                }
+            }, {
+                "$addToSet": {
+                    "batch_years": batch_year
+                }
+            }
+        )
         
         updated_degree = await self.__degree_collec.update_one(
             {
@@ -414,18 +440,7 @@ class Result_DB(DB):
             }
         }, session = self.__session)
 
-        # if updates.modified_count == 0:
-        #     result_db_logger.error(f"While linking result file with degree {self.__degree_doc_id}, degree not updated, {updates}")
-        #     raise Exception("Degree not updated")
-        # else:
         result_db_logger.info(f"Result file linked with degree successfully")
-    
-    def __get_grade_point(self, grade: str) -> int:
-        """
-        Return the grade point of given marks
-        """
-        
-        return GRADE_RATING_GGSIPU.get(str(grade).strip(), np.nan)
 
     def __calculate_cgpa(
         self,
@@ -435,49 +450,59 @@ class Result_DB(DB):
         It will calculate CGPA from result dataframe
         """
 
-        # Function to extract marks and grades
-        def extract_marks_and_grade(s):
+        # Parse list-like strings safely
+        def safe_literal_eval(x):
             try:
-                if isinstance(s, str):
-                    values = literal_eval(s)  # Convert string list to actual list
-                    return np.sum(values[:-1]), values[-1]  # Sum of marks, last element is grade
-                elif isinstance(s, list):
-                    return np.sum(s[:-1]), s[-1]
-                else:
-                    raise Exception(f"Invalid data type, expected str or list, got {type(s)}, value: {s}")
-            except Exception as e:
-                return np.nan, np.nan  # Handle missing or malformed data
+                return literal_eval(str(x))
+            except (ValueError, SyntaxError):
+                return None  # or skip this record
 
-        # Identify relevant subject columns
-        subject_cols = [col for col in result_df.columns if col.startswith("sub_") and col.split('_')[-1] in self.__subject_credits_dict]
+        subject_columns = [col for col in result_df.columns if col.startswith('sub_')]
 
-        # Extract subject credits
-        credits = np.array([self.__subject_credits_dict[col.split('_')[-1]] for col in subject_cols])
+        result_df['total_marks_scored'] = 0
+        result_df['max_marks_possible'] = 0
+        result_df['total_credits'] = 0
+        result_df['weighted_grade_points'] = 0.0
 
-        # Apply extraction in bulk
-        marks_and_grades = result_df[subject_cols].map(extract_marks_and_grade)
-        marks_df = marks_and_grades.map(lambda x: x[0])  # Extract marks
-        grades_df = marks_and_grades.map(lambda x: x[1])  # Extract grades
+        for sub in subject_columns:
+            sub_id = sub.replace("sub_", "")
+            
+            # Drop missing and empty values safely
+            valid = result_df[sub].dropna()
+            valid = valid[valid.str.strip() != '']
 
-        # Convert grades to grade points
-        grade_points_df = grades_df.map(lambda g: self.__get_grade_point(g))
-        grade_points_df = grade_points_df.astype(float)
+            if valid.empty:
+                continue
 
-        # Compute total marks scored (skip NaN values)
-        result_df["total_marks_scored"] = marks_df.sum(axis=1, skipna=True).astype(int)
+            parsed = valid.apply(safe_literal_eval)
+            parsed = parsed.dropna()
 
-        # Compute maximum marks possible (100 per valid subject)
-        result_df["max_marks_possible"] = marks_df.notna().sum(axis=1) * 100
+            if parsed.empty:
+                continue
 
-        # Compute weighted sum and total credits (vectorized)
-        weighted_sum = np.nansum(grade_points_df.values * credits, axis=1)
-        total_credits = np.nansum(~np.isnan(grade_points_df.values) * credits, axis=1)
+            internal = parsed.apply(lambda x: x[0])
+            external = parsed.apply(lambda x: x[1])
+            grade    = parsed.apply(lambda x: x[2])
+            credit   = parsed.apply(lambda x: x[3])
 
-        # Prevent division by zero or NaN issues
-        total_credits = np.where(total_credits == 0, np.nan, total_credits)
+            sub_max_marks = self.sub_id_max_marks_map.get(sub_id, None)
+            if sub_max_marks is None:
+                # print("Subject ID: ", sub_id)
+                # sub_max_marks = 100
+                result_db_logger.error(f"Subject {sub_id} not found in max marks map")
+                raise ValueError(f"Subject {sub_id} not found in max marks map")
 
-        # Compute CGPA safely
-        result_df["cgpa"] = np.where(total_credits > 0, np.round(weighted_sum / total_credits, 2), np.nan)
+            result_df.loc[parsed.index, 'total_marks_scored'] += internal + external
+            result_df.loc[parsed.index, 'max_marks_possible'] += sub_max_marks
+            result_df.loc[parsed.index, 'total_credits'] += credit
+            result_df.loc[parsed.index, 'weighted_grade_points'] += credit * grade.map(GRADE_RATING_GGSIPU)
+        
+        # Compute final CGPA
+        result_df['cgpa'] = (result_df['weighted_grade_points'] / result_df['total_credits']).round(2)
+        result_df['cgpa'] = result_df['cgpa'].where(result_df['total_credits'] > 0, np.nan)
+
+        # Clean up
+        result_df.drop(columns=['total_credits', 'weighted_grade_points'], inplace=True)
     
     def __merge_dataframes(self, original_df: pd.DataFrame, new_df: pd.DataFrame):
         """
@@ -541,7 +566,6 @@ class Result_DB(DB):
         It will reset subject data list
         """
 
-        self.__subject_credits_dict.clear()
         self.subject_id_code_map.clear()
 
     async def link_all_metadata(
@@ -564,7 +588,7 @@ class Result_DB(DB):
         
         batch_doc_id = await self.__create_new_batch(batch)
         self.__degree_doc_id = await self.__create_new_degree(batch_doc_id, degree_id, degree_name, semester_num)
-        await self.__add_subjects_to_degree(subject_ids)
+        await self.__add_subjects_to_degree(subject_ids, batch)
 
         await self.start_transaction()
         await self.__adding_updating_new_college_degree(college_id, college_name, semester_num, is_evening_shift)
@@ -575,10 +599,6 @@ class Result_DB(DB):
         subject_name: str,
         subject_code: str,
         subject_id: str,
-        subject_credit: int | float,
-        max_internal_marks: int,
-        max_external_marks: int,
-        passing_marks: int,
         max_marks: int
     ):
         """
@@ -588,44 +608,38 @@ class Result_DB(DB):
         # Standardizing subject code
         subject_code = standardize_subject_code(subject_code)
 
-        sub_data = await self.__subject_collec.find_one_and_update(
-            {
-                "subject_id": subject_id,
-                "university_id": self.__uni_document["_id"]
-            },  {
-                    "$setOnInsert": {
-                        "subject_name": subject_name,
-                        "subject_code": subject_code,
-                        "subject_id": subject_id,
-                        "subject_credit": subject_credit,
-                        "max_internal_marks": max_internal_marks,
-                        "max_external_marks": max_external_marks,
-                        "max_total_marks": max_marks,
-                        "passing_marks": passing_marks,
-                        "university_id": self.__uni_document["_id"]
-                    }
-            }, upsert = True,
-            return_document = pymongo.ReturnDocument.BEFORE
-        )
+        if len(subject_id) < 6:
+            result_db_logger.warning(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
+            return None
+            # raise ValueError(f"Subject ID should be greater than or equal to 6 digits, {subject_id} given, subject name: {subject_name}, subject code: {subject_code}")
 
-        # Storing subject credits to calulate CGPA in future
-        self.__subject_credits_dict[subject_id] = subject_credit
+        existing_sub = await self._subject_collec.find_one({
+            "subject_id": subject_id,
+            "subject_code": subject_code,
+            "university_id": self.__uni_document["_id"]
+        })
+        if existing_sub:
+            if subject_name.lower() != existing_sub["subject_name"].lower():
+                result_db_logger.warning(f"Subject name is different from existing name. Let's be this way..., existing name: {existing_sub['subject_name']}, and other name: {subject_name}")
+            self.subject_id_code_map[subject_code] = existing_sub["subject_id"]
+            self.sub_id_max_marks_map[subject_id] = existing_sub["max_marks"]
+            return existing_sub["subject_id"], existing_sub["_id"]
 
-        # Storing for conversion of subject code to subject id
+        sub_data = await self.__subject_collec.insert_one({
+            "subject_name": subject_name,
+            "subject_code": subject_code,
+            "subject_id": subject_id,
+            "batch_years": [],
+            "max_marks": max_marks,
+            "university_id": self.__uni_document["_id"]
+        })
+        result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
+
+        # Storing for conversion of subject code to subject id and subject id to max marks map
         self.subject_id_code_map[subject_code] = subject_id
+        self.sub_id_max_marks_map[subject_id] = max_marks
 
-        if sub_data:
-            return subject_id, sub_data["_id"]
-        else:
-            sub_data = await self.__subject_collec.find_one({
-                "subject_id": subject_id,
-                "university_id": self.__uni_document["_id"]
-            }, {
-                "_id" : 1
-            })
-            result_db_logger.info(f"Subject {subject_id} - {subject_name} created successfully")
-
-            return subject_id, sub_data["_id"]
+        return subject_id, sub_data.inserted_id
     
     async def store_and_upload_result(
         self,
@@ -648,12 +662,14 @@ class Result_DB(DB):
         student_result_df['college_id'] = ''
         student_result_df = student_result_df.astype({"roll_num": "string", "college_id": "string"})
 
-        # Add college id and also calculate cgpa
+        # Add college id
         student_result_df['college_id'] = self.__college_id
-        self.__calculate_cgpa(student_result_df)
 
         # If file doesn't exist, upload it
         if not self.__gdrive_file_id:
+            # Calculate cgpa
+            self.__calculate_cgpa(student_result_df)
+
             result_db_logger.info(f"Storing new result...")
             student_result_df.to_csv(file_path, index = False)
             result_gdrive_id = self.__gdrive.upload_file(file_path, self.__gdrive_upload_folder_id)
@@ -683,32 +699,37 @@ class Result_DB(DB):
         await self.commit_transaction()
         self.__final_folder_path_tracker = self.__uni_document["name"]
     
-    async def add_hall_of_fame_student(
-        self,
-        student_detail: dict[str, str | list[int]],
-        university_name: str,
-        batch: int,
-        college_name: str,
-        college_id: str,
-        semester_num: int,
-        degree_name: str,
-        degree_id: str
-    ):
-        """
-        It will add student to hall of fame, those who achieved 10cgpa
-        """
+    async def get_subject_id_by_code(self, subject_code: str, batch_year: int) -> str:
+        if subject_code in self.subject_id_code_map:
+            return self.subject_id_code_map[subject_code]
+        else:
+            subs = await self.__subject_collec.find({
+                "subject_code": subject_code,
+                "batch_years": batch_year
+            }).to_list(length=None)
+            if len(subs) == 1:
+                sub = subs[0]
+                self.subject_id_code_map[subject_code] = sub["subject_id"]
+                self.sub_id_max_marks_map[sub["subject_id"]] = sub["max_marks"]
 
-        del student_detail["college_id"]
-        result_db_logger.info(f"Adding student {student_detail['roll_num']} - {student_detail['name']} to hall of fame...")
-        hall_of_fame_entry = {
-            "university_name": university_name,
-            "batch": batch,
-            "college_name": college_name,
-            "college_id": college_id,
-            "semester_num": semester_num,
-            "degree_name": degree_name,
-            "degree_id": degree_id
-        }
-        hall_of_fame_entry.update(student_detail)
+                return sub["subject_id"]
+            elif len(subs) == 0:
+                return None
         
-        await self.__hall_of_fame_collec.insert_one(hall_of_fame_entry)
+            else:
+                # Matching subjects with degree's subjects to find common subject
+                degree = await self.__get_degree_by_doc_id(self.__degree_doc_id, { "subjects": 1 })
+                degree_subjects = degree["subjects"] if degree else {}
+
+                # A lookup map from subject _id(doc id) to subject_id
+                sub_doc_id_to_subject_id = {str(sub["_id"]): (sub["subject_id"], sub["max_marks"]) for sub in subs}                
+
+                for subject_doc_id in degree_subjects.values():
+                    if subject_doc_id in sub_doc_id_to_subject_id:
+                        subject_id = sub_doc_id_to_subject_id[subject_doc_id][0]
+                        self.subject_id_code_map[subject_code] = subject_id
+                        self.sub_id_max_marks_map[subject_id] = sub_doc_id_to_subject_id[subject_doc_id][1]
+                        return subject_id
+                else:
+                    result_db_logger.error(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")
+                    raise ValueError(f"Multiple subjects found for subject code: {subject_code}, batch year: {batch_year}")

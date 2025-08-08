@@ -62,8 +62,8 @@ class Parse:
         await self.parse_func(pdf_path, page_num = pdf_page_num)
     
     async def auto_parse(self):
-        json_data = input("Enter the json file path: ")
-        with open(json_data, "r") as f:
+        json_file = input("Enter the json file path: ")
+        with open(json_file, "r") as f:
             json_content = json.load(f)
         
         if not json_content:
@@ -87,6 +87,7 @@ class Parse:
             automation_logger.error("Invalid index")
             return
         
+        error_json_content = []
         error_json_path = os.path.join(ENV.LOG_FOLDER_PATH, "error_parsing.json")
         if os.path.isfile(error_json_path):
             with open(error_json_path, "r") as f:
@@ -102,6 +103,7 @@ class Parse:
                 await self.parse_func(pdf_url=json_data["link"], page_num = page_num)
             except Exception as err:
                 error_message = {
+                    "json_file": json_file,
                     "index": input_index,
                     "title": json_data['title'],
                     "link": json_data['link'],
@@ -113,7 +115,6 @@ class Parse:
                 error_json_content.append(error_message)
                 with open(error_json_path, "w") as f:
                     json.dump(error_json_content, f, indent=4)
-                return
             else:
                 endTime = time.time()
                 automation_logger.info(f"Successfully parsed pdf file index no. {input_index}, pdf name: {json_data['title']}, pdf link: {json_data['link']}, time taken: {endTime - startTime} seconds")

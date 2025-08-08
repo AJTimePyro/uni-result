@@ -1,7 +1,7 @@
 from pdfplumber.page import Page
 from result_parser.lib.result_db import Result_DB
 from result_parser.lib.logger import parser_logger
-from result_parser.lib.utils import normalize_spacing, standardize_subject_code
+from result_parser.lib.utils import is_int, normalize_spacing, standardize_subject_code
 from result_parser.lib.customErrors import OldSessionException
 from typing import Union
 import re
@@ -20,6 +20,7 @@ SEMESTER_STR_TO_NUM = {
     "second": 2,
     "third": 3,
     "fourth": 4,
+    "forth": 4,
     "fifth": 5,
     "sixth": 6,
     "seventh": 7,
@@ -40,6 +41,18 @@ SEMESTER_STR_TO_NUM = {
 
 UNIVERSITY_NAME = 'Guru Gobind Singh Indraprastha University'
 
+DEGREE_ID_SKIP_LIST = []
+
+STATUS_MAP = {
+    'ABS': 'ABS',
+    'CAN' : 'CAN',
+    'RL' : 'RL',
+    'DET' : 'DET',
+    'C' : 'CAN',
+    'A' : 'ABS',
+    'D' : 'DET'
+}
+
 class IPU_Result_Parser:
     __pdf_pages_list: list[Page]
     __pdf_page_index: int
@@ -48,7 +61,10 @@ class IPU_Result_Parser:
     __starting_session: int
     __res_db: Result_DB
     __save_link_metadata_param: dict
-    __exam_type: str
+    __current_batch_year: int
+    __current_degree_id: str
+    __current_college_id: str
+    __current_semester_num: int
 
     def __init__(self, pdf_pages_list: list[Page] = [], session_start = 2020, page_to_start = 1):
         if not pdf_pages_list:
@@ -63,7 +79,10 @@ class IPU_Result_Parser:
         self.__starting_session = session_start
         self.__res_db = None
         self.__save_link_metadata_param = dict()
-        self.__exam_type = ''
+        self.__current_batch_year = 0
+        self.__current_degree_id = ''
+        self.__current_college_id = ''
+        self.__current_semester_num = 0
     
     async def start(self):
         self.__res_db = await Result_DB.create(UNIVERSITY_NAME)
@@ -77,9 +96,6 @@ class IPU_Result_Parser:
         parser_logger.info("Starting to parse PDF pages")
         if not self.__skip_till_get_subjects_list():
             return
-        
-        # first_page, page_table = self.__get_next_page()
-        # await self.__start_subjects_parser(first_page, page_table)
 
         while True:
             page_data = self.__get_next_page()
@@ -95,13 +111,18 @@ class IPU_Result_Parser:
                 parser_logger.info("Found subject list, storing previous results...")
                 await self.__storing_result()
 
+                # Clearing metadata
+                self.__res_db.reset_subject_data_list()
+                self.__save_link_metadata_param.clear()
+                self.__current_batch_year = 0
+
                 await self.__start_subjects_parser(next_page, page_table)
             else:
-                await self.__start_student_results_parser(page_table)
+                await self.__start_student_results_parser(next_page, page_table)
     
     async def __storing_result(self):        
         if len(self.__students_result_list) == 0:
-            parser_logger.warning("No results to store, skipping it...")
+            parser_logger.info("No results to store, skipping it...")
         else:
             parser_logger.info("Storing and uploading results...")
             await self.__res_db.store_and_upload_result(
@@ -111,8 +132,6 @@ class IPU_Result_Parser:
         # Clearing previous results
         self.__students_result_list.clear()
         self.__students_result_index = -1
-        self.__res_db.reset_subject_data_list()
-        self.__save_link_metadata_param.clear()
     
     def __get_next_page(self) -> tuple[str, list[list[str]]] | None:
         """
@@ -141,9 +160,6 @@ class IPU_Result_Parser:
         batch = self.__peek_to_get_batch()
         if batch == 0:
             pass
-        elif batch < self.__starting_session:
-            parser_logger.error(f"Batch year {batch} is less than starting session year {self.__starting_session}")
-            raise OldSessionException(f"Batch year {batch} is less than starting session year {self.__starting_session}")
         
         exam_meta_data_matched_regex = re.search(regexStrForExamMetaData, raw_exam_meta_data)
         if exam_meta_data_matched_regex is None:
@@ -161,9 +177,6 @@ class IPU_Result_Parser:
             semester_num = self.__get_int_val(sem_str)
         else:
             semester_num = SEMESTER_STR_TO_NUM.get(sem_str.lower(), 0)
-            if semester_num == 0:
-                parser_logger.error(f"Invalid Semester found... {raw_exam_meta_data}")
-                raise ValueError("Invalid Semester Number...")
 
         updated_college_name = normalize_spacing(college_name)
         
@@ -194,7 +207,9 @@ class IPU_Result_Parser:
         Return integer value from given string, if string is not integer then it will raise exception
         """
 
-        if val.isdigit():
+        if isinstance(val, int):
+            return val
+        if is_int(val):
             return int(val.strip())
         else:
             return 0
@@ -208,18 +223,30 @@ class IPU_Result_Parser:
         batch = 0
 
         if not self.__is_page_contains_subject_list(next_page):
-            batch_searched = re.search(r'Batch:\s(\d{4})', next_page)
-            batch_str = batch_searched.group(1)
-            batch = self.__get_int_val(batch_str)
+            batch = self.__get_batch(next_page)
 
             exam_type_searched = re.search(r'Examination:\s*(\w+)', next_page, re.IGNORECASE)
             if exam_type_searched is None:
                 parser_logger.error(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
                 raise ValueError(f"Failed to parse Exam Type from page no. {self.__pdf_page_index + 1}, raw data: {next_page}")
-            self.__exam_type = exam_type_searched.group(1).strip()
 
         self.__pdf_page_index -= 1
         return batch
+    
+    def __get_batch(self, raw_data: str):
+        """
+        It will get batch number from given raw data
+        """
+
+        if not self.__is_page_contains_subject_list(raw_data):
+            try:
+                batch_searched = re.search(r'Batch:\s(\d{4})', raw_data)
+                batch_str = batch_searched.group(1)
+                return self.__get_int_val(batch_str)
+            except Exception as e:
+                parser_logger.warning(f"Failed to parse Batch from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+        
+        return 0
     
     def __skip_till_get_subjects_list(self):
         """
@@ -242,14 +269,15 @@ class IPU_Result_Parser:
         It will remove all the extra spaces from subject code
         """
 
-        # Fix line breaks inside words (e.g., '20\n1' -> '201', 'AV\nV' -> 'AVV')
+        # Fix line breaks inside words (e.g., '20\n1' -> '201', 'AV\nV' -> 'AVV') and remove dots between numbers (e.g., 'B 3.3' -> 'B33')
         text = re.sub(r'(?<=\w)[\s\n]+(?=\w)', '', raw_subject_code)
+        text = re.sub(r'(?<=\d)[.\n]+(?=\d)', '', text)
 
         # Pattern pattern:
         # - Starts with letters
         # - Allows dots, dashes, slashes, parentheses and ampersand
         # - Allows optional space or whitespaces before number
-        pattern = r'[A-Z][A-Z.\-/()&]+\s*\d+'
+        pattern = r'[A-Z][A-Z.\-/()&]*\s*\d*'
 
         match = re.search(pattern, text, flags=re.IGNORECASE)
         return match.group().replace(' ', '') if match else None
@@ -259,28 +287,54 @@ class IPU_Result_Parser:
         It will parse subject data like subject id, subject code, subject name, subject credit, subject type, subject internal marks, subject external marks, subject passing marks
         """
 
-        subject_id = raw_subject_data[paper_id_index].strip()
+        subject_id = raw_subject_data[paper_id_index]
         subject_name = raw_subject_data[paper_id_index + 2].strip()
 
+        # Subject id should be only numbers
+        subject_id = re.sub(r'\D', '', subject_id).strip()
+
         raw_subject_code = raw_subject_data[paper_id_index + 1].strip()
-        subject_code = self.__self_cleaning_subject_code(raw_subject_code)
+        if raw_subject_code == subject_id:
+            parser_logger.warning(f"Subject code is same as subject id in subject page. Let's be this way..., raw data: {raw_subject_data}")
+            subject_code = subject_id
+        else:
+            raw_subject_code = raw_subject_code.strip()
+            if raw_subject_code.isdigit():
+                # return None
+                parser_logger.error(f"Subject code is number in subject page, raw data: {raw_subject_data}")
+                raise ValueError(f"Subject code is number in subject page, raw data: {raw_subject_data}")
+            else:
+                subject_code = self.__self_cleaning_subject_code(raw_subject_code)
         
-        subject_credit_search = re.search(r'(\d+(?:\.\d+)?)$', raw_subject_data[paper_id_index + 3])
-        if subject_credit_search is None:
-            parser_logger.warning(f"Credit is empty, Skipping this subject, raw data: {raw_subject_data}")
-            return False
-        subject_credit = self.__get_float_val(subject_credit_search.group(1))
+        if subject_code.lower() in ['tt', 'pt']:
+            parser_logger.warning(f"Subject code is TT or PT(Theory or Practical Total) in subject page. Skipping it... raw data: {raw_subject_data}")
+            return None
 
         if not (subject_id and subject_code and subject_name):
-            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            parser_logger.warning(f"Failed to parse subject data from page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}, subject id: {subject_id}, subject code: {subject_code}, subject name: {subject_name}")
             return None
         
-        subject_passing_marks = self.__get_int_val(raw_subject_data[-1])
-        subject_max_marks = self.__get_int_val(raw_subject_data[-2])
-        subject_external_marks = self.__get_int_val(raw_subject_data[-3])
-        subject_internal_marks = self.__get_int_val(raw_subject_data[-4])
+        raw_internal_marks = raw_subject_data[paper_id_index + 8]
+        raw_external_marks = raw_subject_data[paper_id_index + 9]
+        raw_max_marks = raw_subject_data[paper_id_index + 10]
 
-        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_credit, subject_internal_marks, subject_external_marks, subject_passing_marks, subject_max_marks)
+        if "+" in raw_internal_marks:
+            raw_internal_marks = eval(raw_internal_marks)
+        if "+" in raw_external_marks:
+            raw_external_marks = eval(raw_external_marks)
+
+        subject_internal_marks = self.__get_int_val(raw_internal_marks)
+        subject_external_marks = self.__get_int_val(raw_external_marks)
+        subject_max_marks = self.__get_int_val(raw_max_marks)
+
+        if subject_max_marks != subject_internal_marks + subject_external_marks:
+            parser_logger.warning(f"Subject total marks is not equal to sum of subject internal marks and subject external marks in page no. {self.__pdf_page_index + 1}, raw data: {raw_subject_data}")
+            # raise ValueError("Subject total marks is not equal to sum of subject internal marks and subject external marks")
+        
+        if subject_max_marks == 0:
+            subject_max_marks = subject_internal_marks + subject_external_marks
+
+        return await self.__res_db.add_subject(subject_name, subject_code, subject_id, subject_max_marks)
     
     async def __subjects_data_parser(self, raw_subjects_table: list[list[str]]):
         """
@@ -323,6 +377,18 @@ class IPU_Result_Parser:
             self.__skip_till_get_subjects_list()
             return
         
+        if meta_data['degree_code'] in DEGREE_ID_SKIP_LIST:
+            start_page = self.__pdf_page_index
+            self.__skip_till_get_subjects_list()
+            end_page = self.__pdf_page_index
+
+            parser_logger.warning(f"Skipping result page due to degree id: {meta_data['degree_code']}, skipped from page no. {start_page + 1} to page no. {end_page + 1}")
+            return
+        
+        if meta_data['semester_num'] == 0:
+            parser_logger.error(f"Invalid Semester found... {page_data}")
+            raise ValueError("Invalid Semester Number...")
+        
         if not (self.__save_link_metadata_param and (
             meta_data['degree_code'] == self.__save_link_metadata_param['degree_id'] and
             meta_data['college_code'] == self.__save_link_metadata_param['college_id'] and
@@ -333,7 +399,6 @@ class IPU_Result_Parser:
                 "subject_ids" : sub_id_list,
                 "degree_id" : meta_data['degree_code'],
                 "degree_name" : meta_data['degree_name'],
-                "batch" : meta_data['batch'],
                 "college_id" : meta_data['college_code'],
                 "college_name" : meta_data['college_name'],
                 "semester_num" : meta_data['semester_num'],
@@ -341,9 +406,8 @@ class IPU_Result_Parser:
             }
         else:
             self.__save_link_metadata_param['subject_ids'].extend(sub_id_list)
-            self.__save_link_metadata_param['batch'] = meta_data['batch']
 
-        if self.__save_link_metadata_param['batch'] == 0:
+        if meta_data['batch'] == 0:
             parser_logger.info("Next page is also subject list, going to parse it as well...")
             page_data = self.__get_next_page()
             if not page_data:
@@ -352,26 +416,44 @@ class IPU_Result_Parser:
             parser_logger.info(f"Parsing page no. {self.__pdf_page_index + 1} ...")
             await self.__start_subjects_parser(page_data[0], page_data[1])
         else:
-            if self.__save_link_metadata_param['batch'] == 0:
-                raise ValueError("Batch number is not found in metadata")
+            parser_logger.info("Subject list parsed successfully")
+            parser_logger.info("Now parsing student results...")
+    
+    async def __start_student_results_parser(self, raw_result: str, result_table: list[list[str]]):
+        """
+        This will remove header from page data and then starts parsing
+        """
+        
+        batch_year = self.__extract_student_page_exam_metadata(raw_result)
+        if batch_year == 0:
+            parser_logger.error(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
+            raise ValueError(f"Failed to parse batch year from page no. {self.__pdf_page_index + 1}, raw data: {raw_result}")
+        elif batch_year < self.__starting_session:
+            parser_logger.info(f"Batch year {batch_year} is less than starting session year {self.__starting_session}, skipping page no. {self.__pdf_page_index + 1}...")
+            return
+        
+        if self.__current_degree_id != self.__save_link_metadata_param['degree_id'] or self.__current_college_id != self.__save_link_metadata_param['college_id'] or self.__current_semester_num != self.__save_link_metadata_param['semester_num']:
+            self.__save_link_metadata_param.pop("subject_ids")
+            parser_logger.error(f"Degree id or college id or semester number changed from subject page, previous: {self.__save_link_metadata_param}, new: degree id: {self.__current_degree_id}, college id: {self.__current_college_id}, semester num: {self.__current_semester_num}")
+            raise ValueError(f"Degree id or college id or semester number changed from subject page, previous: {self.__save_link_metadata_param}, new: degree id: {self.__current_degree_id}, college id: {self.__current_college_id}, semester num: {self.__current_semester_num}")
+        
+        if self.__current_batch_year != batch_year:
+            if self.__current_batch_year != 0:
+                parser_logger.info(f"Storing previous result as new batch year {batch_year} found")
+                await self.__storing_result()
+
             await self.__res_db.link_all_metadata(
                 subject_ids = self.__save_link_metadata_param['subject_ids'],
                 degree_id = self.__save_link_metadata_param['degree_id'],
                 degree_name = self.__save_link_metadata_param['degree_name'],
-                batch = self.__save_link_metadata_param['batch'],
+                batch = batch_year,
                 college_id = self.__save_link_metadata_param['college_id'],
                 college_name = self.__save_link_metadata_param['college_name'],
                 semester_num = self.__save_link_metadata_param['semester_num'],
                 is_evening_shift = self.__save_link_metadata_param['is_evening_shift']
             )
-            parser_logger.info("Subject list parsed successfully")
-            parser_logger.info("Now parsing student results...")
-    
-    async def __start_student_results_parser(self, result_table: list[list[str]]):
-        """
-        This will remove header from page data and then starts parsing
-        """
-        
+            self.__current_batch_year = batch_year
+
         student_index = 1
         while student_index < len(result_table) and result_table[student_index][1]:
             self.__students_result_list.append(DEFAULT_STUDENT_RESULT.copy())
@@ -418,7 +500,7 @@ class IPU_Result_Parser:
         self.__students_result_list[self.__students_result_index]['roll_num'] = student_roll_num
         self.__students_result_list[self.__students_result_index]['name'] = student_name
     
-    def __extract_subject_id(self, raw_subject_id_str: str):
+    def __extract_subject_id_credit(self, raw_subject_id_str: str):
         """
         It will extract subject id from raw subject id string
         """
@@ -430,9 +512,13 @@ class IPU_Result_Parser:
         credit_match = re.search(r'\((\d+(?:\.\d+)?)\)', raw_subject_id_str)
         subject_part = raw_subject_id_str[:credit_match.start()] if credit_match else raw_subject_id_str
 
+        # Credit
+        credit = credit_match.group(1) if credit_match else ''
+        credit = self.__get_float_val(credit)
+
         # Normalize subject code: remove duplicate dashes, trim spaces
         subject_code = subject_part.replace(' ', '')
-        return subject_code
+        return subject_code, credit
 
     async def __extract_student_marks(
         self,
@@ -444,7 +530,7 @@ class IPU_Result_Parser:
         It will divide student marks into individual subject marks and then parse each subject marks
         """
 
-        regexGrade = r'\d+\s*\(([ABCFPO]\+?)\)'
+        regexGrade = r'(-?\d+|CAN|ABS|RL|DET|C|A|D)(?:\s*\*?\s*\(([ABCFPO]\+?)\))?'
         subject_start_index = 2
         student_grade_list = []
         while subject_start_index < len(student_n_subject_detail):
@@ -452,7 +538,9 @@ class IPU_Result_Parser:
                 subject_start_index += 2
                 continue
             
-            subject_id = self.__extract_subject_id(student_n_subject_detail[subject_start_index])
+            subject_id, subject_credit = self.__extract_subject_id_credit(student_n_subject_detail[subject_start_index])
+            if not subject_credit:
+                parser_logger.warning(f"Subject credit not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
             if not subject_id:
                 parser_logger.error(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
                 raise ValueError(f"Subject ID not found in page no. {self.__pdf_page_index + 1}, raw data: {student_n_subject_detail}")
@@ -460,41 +548,105 @@ class IPU_Result_Parser:
                 subject_id = self.__self_cleaning_subject_code(subject_id)
                 subject_id = standardize_subject_code(subject_id)
                 if self.__res_db.subject_id_code_map.get(subject_id, None) is None:
-                    parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
-                    raise ValueError(f"Subject ID not found in database, raw data: {subject_id}")
+                    parser_logger.warning(f"Subject ID not found in given subject page, raw data: {subject_id}, trying for database")
+
+                    subject_id = await self.__res_db.get_subject_id_by_code(subject_id, self.__current_batch_year)
+                    if not subject_id:
+                        parser_logger.error(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
+                        raise ValueError(f"Subject ID not found in database, raw data: {subject_id}, subject list: {self.__res_db.subject_id_code_map}")
                 else:
                     subject_id = self.__res_db.subject_id_code_map[subject_id]
-            
-            grade = 'F' # If no match found means, it's fail
-            grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
-            if grade_match:
-                grade = grade_match.group(1).strip()
-            
+
             internal_marks = self.__get_int_val(student_int_ext_marks[subject_start_index])
             external_marks = self.__get_int_val(student_int_ext_marks[subject_start_index + 1])
+            
+            grade = '' # Empty Grade
+            total_marks = internal_marks + external_marks   # Default total marks
+            status = '' # By default status is empty
 
-            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade]
+            total_marks_n_grade_match = re.match(regexGrade, student_total_marks_n_grade[subject_start_index])
+            if total_marks_n_grade_match:
+                total_marks_str = total_marks_n_grade_match.group(1)
+                grade = total_marks_n_grade_match.group(2)
+
+                if not total_marks_str:
+                    parser_logger.warning(f"Total marks not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                else:
+                    if is_int(total_marks_str): # Checks total marks is integer or not
+                        total_marks = self.__get_int_val(total_marks_str)
+
+                        if total_marks < 0:
+                            parser_logger.warning(f"Total marks is negative in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
+                    else:
+                        total_marks_str = total_marks_str.strip().upper()
+                        if total_marks_str in STATUS_MAP.keys():
+                            total_marks = 0
+                            status = STATUS_MAP[total_marks_str]
+                        else:
+                            parser_logger.warning(f"Total marks is not parsable in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
+                            raise ValueError(f"Total marks is not parsable in page no. {self.__pdf_page_index + 1}, total marks: {total_marks_str}, raw data: {student_total_marks_n_grade}")
+
+            else:
+                parser_logger.error(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                raise ValueError(f"Failed to parse grade from page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+            
+            if not grade:
+                parser_logger.warning(f"Grade not found in page no. {self.__pdf_page_index + 1}, raw data: {student_total_marks_n_grade}")
+                grade = self.__marks_to_grade(total_marks, subject_id)
+            grade = grade.strip()
+
+            self.__students_result_list[self.__students_result_index][f'sub_{subject_id}'] = [internal_marks, external_marks, grade, subject_credit, total_marks, status]
             student_grade_list.append(grade)
             subject_start_index += 2
-        
-        if all(grade == 'O' for grade in student_grade_list):
-            if self.__exam_type.lower() == 'regular':
-                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa")
+    
+    def __extract_student_page_exam_metadata(self, raw_data: str):
+        """
+        It will extract exam metadata in student result page to verify if it is correct
+        """
 
-                try:
-                    # Adding student to hall of fame
-                    await self.__res_db.add_hall_of_fame_student(
-                        self.__students_result_list[self.__students_result_index],
-                        UNIVERSITY_NAME,
-                        self.__save_link_metadata_param['batch'],
-                        self.__save_link_metadata_param['college_name'],
-                        self.__save_link_metadata_param['college_id'],
-                        self.__save_link_metadata_param['semester_num'],
-                        self.__save_link_metadata_param['degree_name'],
-                        self.__save_link_metadata_param['degree_id']
-                    )
-                except Exception as err:
-                    parser_logger.error(f"Failed to add {self.__students_result_list[self.__students_result_index]['roll_num']} in hall of fame")
-                    parser_logger.error(err)
-            else:
-                parser_logger.info(f"Student {self.__students_result_list[self.__students_result_index]['roll_num']} got 10 cgpa, but maybe it's not his/her regular exam result, so not adding to hall of fame, other details: {self.__students_result_list[self.__students_result_index]}")
+        regexStrForExamMetaData = r'Programme Code:\s*(\d{3})\s+Programme Name:\s*.+\s+Sem./Year(?:/EU)?:\s*(.+)\s+(?:SEMESTER|ANNUAL)\s+Batch:\s*(\d{4}).+Institution Code:\s*(\d{3})'
+        metaDataSearched = re.search(regexStrForExamMetaData, raw_data, re.DOTALL)
+
+        if metaDataSearched is None:
+            parser_logger.error(f"Failed to parse Exam Meta Data in student result from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+            raise ValueError(f"Failed to parse Exam Meta Data in student result from page no. {self.__pdf_page_index + 1}, raw data: {raw_data}")
+
+        degree_id = metaDataSearched.group(1).strip()
+        semester_str = metaDataSearched.group(2).strip()
+        batch_year = self.__get_int_val(metaDataSearched.group(3))
+        college_id = metaDataSearched.group(4).strip()
+
+        semester_num = 0
+        if semester_str.isdigit():
+            semester_num = self.__get_int_val(semester_str)
+        else:
+            semester_num = SEMESTER_STR_TO_NUM.get(semester_str.lower(), 0)
+
+        self.__current_degree_id = degree_id
+        self.__current_semester_num = semester_num
+        self.__current_college_id = college_id
+
+        return batch_year
+
+    def __marks_to_grade(self, marks: int, sub_id: str):
+        """
+        This will convert marks to grade
+        """
+        
+        marks_in_100 = marks
+        if marks_in_100 != 100:
+            max_marks = self.__res_db.sub_id_max_marks_map.get(sub_id, None)
+            if max_marks is None:
+                parser_logger.error(f"Subject ID not found in database, raw data: {sub_id}, subject list: {self.__res_db.sub_id_max_marks_map}")
+                raise ValueError(f"Subject ID not found in database, raw data: {sub_id}, subject list: {self.__res_db.sub_id_max_marks_map}")
+            
+            marks_in_100 = (marks / max_marks) * 100
+        
+        grade_thresholds = [
+            (90, 'O'), (75, 'A+'), (65, 'A'),
+            (55, 'B+'), (50, 'B'), (45, 'C'), (40, 'P')
+        ]
+        
+        return next((g for threshold, g in grade_thresholds if marks_in_100 >= threshold), 'F')
+
+        
